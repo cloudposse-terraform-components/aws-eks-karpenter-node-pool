@@ -1,0 +1,7 @@
+import:
+  - orgs/default/test/_defaults
+  - catalog/vpc
+  - catalog/eks-cluster
+  - catalog/eks-karpenter-controller
+  - catalog/usecase/basic
+  - catalog/usecase/disabled

@@ -1,0 +1,44 @@
+components:
+  terraform:
+    eks/karpenter-controller:
+      metadata:
+        component: eks/karpenter-controller
+      vars:
+        enabled: true
+        kube_exec_auth_role_arn_enabled: false
+        name: "karpenter"
+        # https://github.com/aws/karpenter/tree/main/charts/karpenter
+        chart_repository: "oci://public.ecr.aws/karpenter"
+        chart: "karpenter"
+        chart_version: "1.0.0"
+        # Enable Karpenter to get advance notice of spot instances being terminated
+        # See https://karpenter.sh/docs/concepts/#interruption
+        interruption_handler_enabled: true
+        resources:
+          limits:
+            cpu: "100m"
+            memory: "512Mi"
+          requests:
+            cpu: "100m"
+            memory: "512Mi"
+        cleanup_on_fail: true
+        atomic: true
+        wait: true
+        rbac_enabled: true
+        # "karpenter-crd" can be installed as an independent helm chart to manage the lifecycle of Karpenter CRDs
+        crd_chart_enabled: true
+        crd_chart: "karpenter-crd"
+        # replicas set the number of Karpenter controller replicas to run
+        replicas: 2
+        # "settings" controls a subset of the settings for the Karpenter controller regarding batch idle and max duration.
+        # you can read more about these settings here: https://karpenter.sh/docs/reference/settings/
+        settings:
+          batch_idle_duration: "1s"
+          batch_max_duration: "10s"
+        # The logging settings for the Karpenter controller
+        logging:
+          enabled: true
+          level:
+            controller: "info"
+            global: "info"
+            webhook: "error"

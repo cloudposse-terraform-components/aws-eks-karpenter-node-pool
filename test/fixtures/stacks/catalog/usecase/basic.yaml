@@ -1,0 +1,187 @@
+components:
+  terraform:
+    eks/karpenter-node-pool/basic:
+      metadata:
+        component: eks/karpenter-node-pool
+      vars:
+        enabled: true
+        kube_exec_auth_role_arn_enabled: false
+        name: "karpenter-node-pool"
+        # https://karpenter.sh/v0.36.0/docs/concepts/nodepools/
+        node_pools:
+          default:
+            labels:
+              test: test
+            annotations:
+              test: test
+            # Whether to place EC2 instances launched by Karpenter into VPC private subnets. Set it to `false` to use public subnets
+            private_subnets_enabled: true
+            disruption:
+              max_instance_lifetime: "1h" # 14 days
+            # Karpenter provisioner total CPU limit for all pods running on the EC2 instances launched by Karpenter
+            total_cpu_limit: "100"
+            # Karpenter provisioner total memory limit for all pods running on the EC2 instances launched by Karpenter
+            total_memory_limit: "1000Gi"
+            # # Karpenter provisioner metadata options
+            # metadata_options: {}
+            # The AMI used by Karpenter provisioner when provisioning nodes. Based on the value set for amiFamily, Karpenter will automatically query for the appropriate EKS optimized AMI via AWS Systems Manager (SSM)
+            # Bottlerocket, AL2, Ubuntu
+            # https://karpenter.sh/docs/concepts/nodepools/#spectemplatespecrequirements
+            ami_family: AL2
+            # Karpenter provisioner block device mappings.
+            block_device_mappings:
+              - deviceName: /dev/xvda
+                ebs:
+                  volumeSize: 200Gi
+                  volumeType: gp3
+                  encrypted: true
+                  deleteOnTermination: true
+            # Set acceptable (In) and unacceptable (Out) Kubernetes and Karpenter values for node provisioning based on
+            # Well-Known Labels and cloud-specific settings. These can include instance types, zones, computer architecture,
+            # and capacity type (such as AWS spot or on-demand).
+            # See https://karpenter.sh/docs/concepts/nodepools/#spectemplatespecrequirements for more details
+            requirements:
+              # We do not need to set instance-category or generation because we set family explicitly.
+              #  # instance-category and instance-generation are required if you do not have any other instance-* restrictions,
+              #  # because otherwise Karpenter will fill in defaults, and you will get the error
+              #  # "Provider produced inconsistent result after apply"
+              #  - key: karpenter.k8s.aws/instance-category
+              #    operator: In
+              #    values: ["c", "m", "r"]
+              #  - key: karpenter.k8s.aws/instance-generation
+              #    operator: Gt
+              #    values: ["2"]
+              # Require encryption in transit. If we did not have a more explicit SCP, this
+              # would be sufficient to ensure that all instances are encrypted in transit.
+              - key: "karpenter.k8s.aws/instance-encryption-in-transit-supported"
+                operator: "In"
+                values: ["true"]
+              # Exclude instance types with 1 vCPU to make room for all the DaemonSets
+              - key: "karpenter.k8s.aws/instance-cpu"
+                operator: Gt
+                values: ["1"]
+              # With a lot of pods, we start hitting IOPS and Bandwidth issues
+              # on the EBS volume. Split things up over smaller instances
+              # (< 32 vCPUs) to ensure adequate disk performance.
+              - key: "karpenter.k8s.aws/instance-cpu"
+                operator: Lt
+                values: ["32"]
+              # See https://karpenter.sh/docs/concepts/nodepools/#capacity-type
+              # Allow fallback to on-demand instances when spot instances are unavailable
+              # By default, Karpenter uses the "price-capacity-optimized" allocation strategy
+              # https://aws.amazon.com/blogs/compute/introducing-price-capacity-optimized-allocation-strategy-for-ec2-spot-instances/
+              # It is currently not configurable, but that may change in the future.
+              # See https://github.com/aws/karpenter-provider-aws/issues/1240
+              - key: "karpenter.sh/capacity-type"
+                operator: "In"
+                values:
+                  - "on-demand"
+                  - "spot"
+
+              - key: "kubernetes.io/arch"
+                operator: "In"
+                values:
+                  - "amd64"
+
+              # Set instance family according to the DenyEC2InstancesWithoutEncryptionInTransit SCP
+              # https://raw.githubusercontent.com/cloudposse/terraform-aws-service-control-policies/0.14.1/catalog/ec2-policies.yaml
+              # We do this explicitly, despite the "instance-encryption-in-transit-supported" requirement, because
+              # new instance families will be added before the SCP is updated, and Karpenter just gives up if it
+              # tries to launch an instance and fails due to the SCP.
+              - key: "karpenter.k8s.aws/instance-family"
+                operator: "In"
+                values:
+                  # updated 2024-04-11
+                  - c5a
+                  - c5ad
+                  - c5n
+                  - c6a
+                  - c6gn
+                  - c6i
+                  - c6id
+                  - c6in
+                  - c7a
+                  - c7g
+                  - c7gd
+                  - c7gn
+                  - c7i
+                  - d3
+                  - d3en
+                  - dl1
+                  - dl2q
+                  - g4ad
+                  - g4dn
+                  - g5
+                  - g6
+                  - gr6
+                  - hpc6a
+                  - hpc6id
+                  - hpc7a
+                  - hpc7g
+                  - i3en
+                  - i4g
+                  - i4i
+                  - im4gn
+                  - inf1
+                  - inf2
+                  - is4gen
+                  - m5dn
+                  - m5n
+                  - m5zn
+                  - m6a
+                  - m6i
+                  - m6id
+                  - m6idn
+                  - m6in
+                  - m7a
+                  - m7g
+                  - m7gd
+                  - m7i
+                  - m7i-flex
+                  - p3dn
+                  - p4d
+                  - p4de
+                  - p5
+                  - r5dn
+                  - r5n
+                  - r6a
+                  - r6i
+                  - r6id
+                  - r6idn
+                  - r6in
+                  - r7a
+                  - r7g
+                  - r7gd
+                  - r7i
+                  - r7iz
+                  - trn1
+                  - trn1n
+                  - u-12tb1
+                  - u-18tb1
+                  - u-24tb1
+                  - u-3tb1
+                  - u-6tb1
+                  - u-9tb1
+                  - vt1
+                  - x2idn
+                  - x2iedn
+                  - x2iezn
+          # extra-pool-example:
+          #   <<: *node_pool_defaults
+          #   # here's an example of an extra node pool
+          #   disruption:
+          #     consolidation_policy: "WhenEmpty"
+          #     # If used to host GitHub action runners, experience suggests
+          #     # 3m is the practical minimum value, and 5m is a more reasonable lower limit.
+          #     consolidate_after: "5m"
+          #   labels:
+          #     "acme.co/node-role": "atomic-tasks"
+          #   taints:
+          #     - key: "acme.co/atomic-tasks"
+          #       # you may want to have another, similar pool, but with value "long"
+          #       # that supports long-running jobs by only using on-demand instances.
+          #       value: "short"
+          #       effect: "NoSchedule"
+          #   disruption:
+          #     max_instance_lifetime: "8h"
+          #     consolidation_policy: "WhenEmpty"
