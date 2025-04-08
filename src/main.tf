@@ -79,4 +79,9 @@ resource "kubernetes_manifest" "node_pool" {
   }
 
   depends_on = [kubernetes_manifest.ec2_node_class]
+
+
+  # Marks the field as managed by Kubernetes to avoid continually detecting drift
+  # https://github.com/hashicorp/terraform-provider-kubernetes/issues/1378
+  computed_fields = ["spec.template.spec.taints"]
 }
