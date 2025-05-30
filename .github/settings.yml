@@ -5,3 +5,4 @@ repository:
   description: This component deploys Karpenter NodePools to an EKS cluster
   homepage: https://cloudposse.com/accelerate
   topics: terraform, terraform-component
+
