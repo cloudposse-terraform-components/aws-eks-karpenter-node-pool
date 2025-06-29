@@ -4,15 +4,16 @@ import (
 	"context"
 	"fmt"
 	"testing"
+
+	"github.com/cloudposse/test-helpers/pkg/atmos"
 	helper "github.com/cloudposse/test-helpers/pkg/atmos/component-helper"
 	awsHelper "github.com/cloudposse/test-helpers/pkg/aws"
-	"github.com/cloudposse/test-helpers/pkg/atmos"
 	"github.com/stretchr/testify/assert"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-    corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"k8s.io/client-go/dynamic"
 )
@@ -35,7 +36,6 @@ func (s *ComponentSuite) TestBasic() {
 	var nodePools map[string]interface{}
 	atmos.OutputStruct(s.T(), options, "node_pools", &nodePools)
 	assert.NotEmpty(s.T(), nodePools)
-
 
 	var ec2NodeClasses map[string]interface{}
 	atmos.OutputStruct(s.T(), options, "ec2_node_classes", &ec2NodeClasses)
@@ -77,7 +77,6 @@ func (s *ComponentSuite) TestBasic() {
 		conditionMap := condition.(map[string]interface{})
 		assert.Equal(s.T(), conditionMap["status"], "True")
 	}
-
 
 	nodePoolGVR := schema.GroupVersionResource{
 		Group:    "karpenter.sh",
