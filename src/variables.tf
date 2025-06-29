@@ -62,6 +62,10 @@ variable "node_pools" {
         duration = optional(string)
         # The percentage or number of nodes that Karpenter can scale down during the budget.
         nodes = string
+        # Reasons can be one of Drifted, Underutilized, or Empty
+        # If omitted, it’s assumed that the budget applies to all reasons.
+        # See https://karpenter.sh/v1.1/concepts/disruption/#reasons
+        reasons = optional(list(string))
       })), [])
     }), {})
     # Karpenter provisioner total CPU limit for all pods running on the EC2 instances launched by Karpenter
@@ -92,8 +96,13 @@ variable "node_pools" {
       # httpTokens can be either "required" or "optional"
       httpTokens = optional(string, "required")
     }), {})
-    # The AMI used by Karpenter provisioner when provisioning nodes. Based on the value set for amiFamily, Karpenter will automatically query for the appropriate EKS optimized AMI via AWS Systems Manager (SSM)
-    ami_family = string
+    # ami_family dictates the default bootstrapping logic.
+    # It is only required if you do not specify amiSelectorTerms.alias
+    ami_family = optional(string, null)
+    # Selectors for the AMI used by Karpenter provisioner when provisioning nodes.
+    # Usually use { alias = "<family>@latest" } but version can be pinned instead of "latest".
+    # Based on the ami_selector_terms, Karpenter will automatically query for the appropriate EKS optimized AMI via AWS Systems Manager (SSM)
+    ami_selector_terms = list(any)
     # Karpenter nodes block device mappings. Controls the Elastic Block Storage volumes that Karpenter attaches to provisioned nodes.
     # Karpenter uses default block device mappings for the AMI Family specified.
     # For example, the Bottlerocket AMI Family defaults with two block device mappings,
