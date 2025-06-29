@@ -42,11 +42,14 @@ components:
               httpProtocolIPv6: "disabled"
               httpPutResponseHopLimit: 2
               httpTokens: "required"
-            # The AMI used by Karpenter provisioner when provisioning nodes. Based on the value set for amiFamily, Karpenter will automatically query for the appropriate EKS optimized AMI via AWS Systems Manager (SSM)
-            # Bottlerocket, AL2, Ubuntu
-            # https://karpenter.sh/v0.18.0/aws/provisioning/#amazon-machine-image-ami-family
-            ami_family: AL2
-            # Karpenter provisioner block device mappings.
+            # The AMI used by Karpenter node class when provisioning nodes.
+            # Based on the value set for ami_selector_terms, Karpenter will automatically query for the appropriate
+            # EKS optimized AMI via AWS Systems Manager (SSM)
+            # bottlerocket, al2, al2023, windows2019, windows2022
+            # https://karpenter.sh/v1.0/concepts/nodeclasses/#specamiselectorterms
+            ami_selector_terms:
+              - alias: al2@latest
+            # Karpenter node class block device mappings.
             block_device_mappings:
               - deviceName: /dev/xvda
                 ebs:
@@ -57,7 +60,7 @@ components:
             # Set acceptable (In) and unacceptable (Out) Kubernetes and Karpenter values for node provisioning based on
             # Well-Known Labels and cloud-specific settings. These can include instance types, zones, computer architecture,
             # and capacity type (such as AWS spot or on-demand).
-            # See https://karpenter.sh/v0.18.0/provisioner/#specrequirements for more details
+            # See https://karpenter.sh/docs/concepts/nodepools/#spectemplatespecrequirements for more details
             requirements:
               - key: "karpenter.sh/capacity-type"
                 operator: "In"
@@ -96,4 +99,3 @@ components:
                 operator: "In"
                 values:
                   - "amd64"
-

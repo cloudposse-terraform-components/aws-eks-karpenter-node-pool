@@ -27,7 +27,7 @@ resource "kubernetes_manifest" "ec2_node_class" {
   for_each = local.node_pools
 
   manifest = {
-    apiVersion = "karpenter.k8s.aws/v1beta1"
+    apiVersion = "karpenter.k8s.aws/v1"
     kind       = "EC2NodeClass"
     metadata = {
       name = coalesce(each.value.name, each.key)
@@ -42,12 +42,15 @@ resource "kubernetes_manifest" "ec2_node_class" {
           "aws:eks:cluster-name" = local.eks_cluster_id
         }
       }]
-      # https://karpenter.sh/v0.18.0/aws/provisioning/#amazon-machine-image-ami-family
-      amiFamily       = each.value.ami_family
-      metadataOptions = each.value.metadata_options
-      tags            = module.this.tags
+      # https://karpenter.sh/v1.0/concepts/nodeclasses/#specamiselectorterms
+      amiSelectorTerms = each.value.ami_selector_terms
+      metadataOptions  = each.value.metadata_options
+      tags             = module.this.tags
       }, try(length(local.node_block_device_mappings[each.key]), 0) == 0 ? {} : {
       blockDeviceMappings = local.node_block_device_mappings[each.key]
+      },
+      each.value.ami_family == null ? {} : {
+        amiFamily = each.value.ami_family
     })
   }
 }
