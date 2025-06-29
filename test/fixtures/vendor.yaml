@@ -7,7 +7,7 @@ spec:
   sources:
     - component: "account-map"
       source: github.com/cloudposse/terraform-aws-components.git//modules/account-map?ref={{.Version}}
-      version: 1.535.4
+      version: 1.520.0
       targets:
         - "components/terraform/account-map"
       included_paths:
