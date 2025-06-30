@@ -31,7 +31,7 @@ spec:
 
     - component: "eks/cluster"
       source: github.com/cloudposse-terraform-components/aws-eks-cluster.git//src?ref={{.Version}}
-      version: v1.535.1
+      version: v1.538.0
       targets:
         - "components/terraform/eks/cluster"
       included_paths:
@@ -43,7 +43,7 @@ spec:
 
     - component: "vpc"
       source: github.com/cloudposse-terraform-components/aws-vpc.git//src?ref={{.Version}}
-      version: v1.536.0
+      version: v1.538.1
       targets:
         - "components/terraform/vpc"
       included_paths:

@@ -21,7 +21,7 @@ resource "kubernetes_manifest" "node_pool" {
   for_each = local.node_pools
 
   manifest = {
-    apiVersion = "karpenter.sh/v1beta1"
+    apiVersion = "karpenter.sh/v1"
     kind       = "NodePool"
     metadata = {
       name = coalesce(each.value.name, each.key)
@@ -34,26 +34,25 @@ resource "kubernetes_manifest" "node_pool" {
       weight = each.value.weight
       disruption = merge({
         consolidationPolicy = each.value.disruption.consolidation_policy
-        expireAfter         = each.value.disruption.max_instance_lifetime
-        },
-        each.value.disruption.consolidate_after == null ? {} : {
-          consolidateAfter = each.value.disruption.consolidate_after
+        consolidateAfter    = each.value.disruption.consolidate_after == null ? 0 : each.value.disruption.consolidate_after
         },
         length(each.value.disruption.budgets) == 0 ? {} : {
           budgets = each.value.disruption.budgets
         }
       )
       template = {
-        metadata = {
-          labels      = coalesce(each.value.labels, {})
-          annotations = coalesce(each.value.annotations, {})
-        }
+        metadata = merge(
+          {},
+          try(length(each.value.labels), 0) > 0 ? { labels = each.value.labels } : {},
+          try(length(each.value.annotations), 0) > 0 ? { annotations = each.value.annotations } : {}
+        )
         spec = merge({
           nodeClassRef = {
-            apiVersion = "karpenter.k8s.aws/v1beta1"
-            kind       = "EC2NodeClass"
-            name       = coalesce(each.value.name, each.key)
-          }
+            group = "karpenter.k8s.aws"
+            kind  = "EC2NodeClass"
+            name  = coalesce(each.value.name, each.key)
+          },
+          expireAfter = each.value.disruption.max_instance_lifetime
           },
           try(length(each.value.requirements), 0) == 0 ? {} : {
             requirements = [for r in each.value.requirements : merge({
@@ -80,8 +79,10 @@ resource "kubernetes_manifest" "node_pool" {
 
   depends_on = [kubernetes_manifest.ec2_node_class]
 
-
   # Marks the field as managed by Kubernetes to avoid continually detecting drift
   # https://github.com/hashicorp/terraform-provider-kubernetes/issues/1378
-  computed_fields = ["spec.template.spec.taints"]
+  computed_fields = [
+    "spec.template.spec.taints",
+    "spec.disruption.budgets"
+  ]
 }
