@@ -6,6 +6,7 @@ components:
       vars:
         enabled: false
         kube_exec_auth_role_arn_enabled: false
+        kube_exec_auth_role_arn: "empty" # fufills coalesce, but is disabled by above.
         name: "karpenter-node-pool"
         node_pools:
           default:
