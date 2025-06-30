@@ -31,7 +31,7 @@ spec:
 
     - component: "eks/cluster"
       source: github.com/cloudposse-terraform-components/aws-eks-cluster.git//src?ref={{.Version}}
-      version: v1.537.0
+      version: v1.538.0
       targets:
         - "components/terraform/eks/cluster"
       included_paths:
