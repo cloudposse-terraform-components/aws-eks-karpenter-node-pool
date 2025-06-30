@@ -41,10 +41,11 @@ resource "kubernetes_manifest" "node_pool" {
         }
       )
       template = {
-        metadata = {
-          labels      = each.value.labels
-          annotations = each.value.annotations
-        }
+        metadata = merge(
+          {},
+          try(length(each.value.labels), 0) > 0 ? { labels = each.value.labels } : {},
+          try(length(each.value.annotations), 0) > 0 ? { annotations = each.value.annotations } : {}
+        )
         spec = merge({
           nodeClassRef = {
             group = "karpenter.k8s.aws"
@@ -80,5 +81,8 @@ resource "kubernetes_manifest" "node_pool" {
 
   # Marks the field as managed by Kubernetes to avoid continually detecting drift
   # https://github.com/hashicorp/terraform-provider-kubernetes/issues/1378
-  computed_fields = ["spec.template.spec.taints"]
+  computed_fields = [
+    "spec.template.spec.taints",
+    "spec.disruption.budgets"
+  ]
 }
