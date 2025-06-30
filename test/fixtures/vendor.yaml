@@ -19,7 +19,7 @@ spec:
 
     - component: "eks/karpenter-controller"
       source: github.com/cloudposse-terraform-components/aws-eks-karpenter-controller.git//src?ref={{.Version}}
-      version: v1.536.0
+      version: v1.536.2
       targets:
         - "components/terraform/eks/karpenter-controller"
       included_paths:
