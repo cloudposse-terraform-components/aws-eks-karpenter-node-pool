@@ -6,7 +6,7 @@ tags:
   - provider/helm
 ---
 
-# Component: `eks/karpenter-node-pool`
+# Component: `eks-karpenter-node-pool`
 
 This component deploys [Karpenter NodePools](https://karpenter.sh/docs/concepts/nodepools/) to an EKS cluster.
 
@@ -30,7 +30,6 @@ Not supported:
   - `userData`
   - `detailedMonitoring`
   - `associatePublicIPAddress`
-
 ## Usage
 
 **Stack Level**: Regional
@@ -143,8 +142,8 @@ components:
                   - "amd64"
 ```
 
-<!-- prettier-ignore-start -->
-<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+
+<!-- markdownlint-disable -->
 ## Requirements
 
 | Name | Version |
@@ -224,17 +223,29 @@ components:
 |------|-------------|
 | <a name="output_ec2_node_classes"></a> [ec2\_node\_classes](#output\_ec2\_node\_classes) | Deployed Karpenter EC2NodeClass |
 | <a name="output_node_pools"></a> [node\_pools](#output\_node\_pools) | Deployed Karpenter NodePool |
-<!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
-<!-- prettier-ignore-end -->
+<!-- markdownlint-restore -->
+
+
 
 ## References
 
-- https://karpenter.sh
-- https://aws.github.io/aws-eks-best-practices/karpenter
-- https://karpenter.sh/docs/concepts/nodepools
-- https://aws.amazon.com/blogs/aws/introducing-karpenter-an-open-source-high-performance-kubernetes-cluster-autoscaler
-- https://github.com/aws/karpenter
-- https://ec2spotworkshops.com/karpenter.html
-- https://www.eksworkshop.com/docs/autoscaling/compute/karpenter/
 
-[<img src="https://cloudposse.com/logo-300x69.svg" height="32" align="right"/>](https://cpco.io/component)
+- [https://karpenter.sh](https://karpenter.sh) - 
+
+- [https://aws.github.io/aws-eks-best-practices/karpenter](https://aws.github.io/aws-eks-best-practices/karpenter) - 
+
+- [https://karpenter.sh/docs/concepts/nodepools](https://karpenter.sh/docs/concepts/nodepools) - 
+
+- [https://aws.amazon.com/blogs/aws/introducing-karpenter-an-open-source-high-performance-kubernetes-cluster-autoscaler](https://aws.amazon.com/blogs/aws/introducing-karpenter-an-open-source-high-performance-kubernetes-cluster-autoscaler) - 
+
+- [https://github.com/aws/karpenter](https://github.com/aws/karpenter) - 
+
+- [https://ec2spotworkshops.com/karpenter.html](https://ec2spotworkshops.com/karpenter.html) - 
+
+- [https://www.eksworkshop.com/docs/autoscaling/compute/karpenter/](https://www.eksworkshop.com/docs/autoscaling/compute/karpenter/) - 
+
+
+
+
+[<img src="https://cloudposse.com/logo-300x69.svg" height="32" align="right"/>](https://cpco.io/homepage?utm_source=github&utm_medium=readme&utm_campaign=cloudposse-terraform-components/aws-eks-karpenter-node-pool&utm_content=)
+
