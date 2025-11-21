@@ -96,6 +96,10 @@ variable "node_pools" {
       # httpTokens can be either "required" or "optional"
       httpTokens = optional(string, "required")
     }), {})
+    # Enable detailed monitoring for EC2 instances. See https://karpenter.sh/docs/concepts/nodeclasses/#specdetailedmonitoring
+    detailed_monitoring = optional(bool, false)
+    # User data script to pass to EC2 instances. See https://karpenter.sh/docs/concepts/nodeclasses/#specuserdata
+    user_data = optional(string, null)
     # ami_family dictates the default bootstrapping logic.
     # It is only required if you do not specify amiSelectorTerms.alias
     ami_family = optional(string, null)

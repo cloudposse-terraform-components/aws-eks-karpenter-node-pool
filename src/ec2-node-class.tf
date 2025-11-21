@@ -46,6 +46,8 @@ resource "kubernetes_manifest" "ec2_node_class" {
       amiSelectorTerms = each.value.ami_selector_terms
       metadataOptions  = each.value.metadata_options
       tags             = module.this.tags
+      detailedMonitoring = each.value.detailed_monitoring
+      userData = each.value.user_data
       }, try(length(local.node_block_device_mappings[each.key]), 0) == 0 ? {} : {
       blockDeviceMappings = local.node_block_device_mappings[each.key]
       },
