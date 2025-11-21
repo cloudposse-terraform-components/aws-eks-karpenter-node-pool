@@ -32,13 +32,15 @@
 
 This component deploys [Karpenter NodePools](https://karpenter.sh/docs/concepts/nodepools/) to an EKS cluster.
 
-Karpenter is still rapidly evolving. At this time, this component only supports a subset of the features
+Karpenter is still in v0 and rapidly evolving. At this time, this component only supports a subset of the features
 available in Karpenter. Support could be added for additional features as needed.
 
 Not supported:
 
 - Elements of NodePool:
   - [`template.spec.kubelet`](https://karpenter.sh/docs/concepts/nodepools/#spectemplatespeckubelet)
+  - [`limits`](https://karpenter.sh/docs/concepts/nodepools/#limits) currently only supports `cpu` and `memory`. Other
+    limits such as `nvidia.com/gpu` are not supported.
 - Elements of NodeClass:
   - `subnetSelectorTerms`. This component only supports selecting all public or all private subnets of the referenced
     EKS cluster.
@@ -47,6 +49,8 @@ Not supported:
   - `amiSelectorTerms`. Such terms override the `amiFamily` setting, which is the only AMI selection supported by this
     component.
   - `instanceStorePolicy`
+  - `userData`
+  - `detailedMonitoring`
   - `associatePublicIPAddress`
 
 
