@@ -49,6 +49,9 @@ components:
                   volumeType: gp3
                   encrypted: true
                   deleteOnTermination: true
+            user_data: |
+              [settings.kubelet-device-plugins.nvidia]
+              device-sharing-strategy = "time-slicing"
             # Set acceptable (In) and unacceptable (Out) Kubernetes and Karpenter values for node provisioning based on
             # Well-Known Labels and cloud-specific settings. These can include instance types, zones, computer architecture,
             # and capacity type (such as AWS spot or on-demand).
@@ -179,6 +182,41 @@ components:
                   - x2idn
                   - x2iedn
                   - x2iezn
+          no_labels_no_annotations:
+            # Whether to place EC2 instances launched by Karpenter into VPC private subnets. Set it to `false` to use public subnets
+            private_subnets_enabled: true
+            disruption:
+              consolidation_policy: "WhenEmptyOrUnderutilized"
+              # A node becomes eligible for consolidation when it has not had
+              # a pod added or removed for the consolidate_after duration.
+              consolidate_after: "70s"
+              max_instance_lifetime: "1h"
+              budgets:
+              - nodes: "20%"
+                reasons:
+                 - "Underutilized"
+                 - "Empty"
+            # Karpenter node pool total CPU limit for all pods running on the EC2 instances launched by Karpenter
+            total_cpu_limit: "100"
+            # Karpenter node pool total memory limit for all pods running on the EC2 instances launched by Karpenter
+            total_memory_limit: "1000Gi"
+            # Karpenter node class metadata options
+            metadata_options: {}
+            # The AMI used by Karpenter node class when provisioning nodes.
+            # Based on the value set for ami_selector_terms, Karpenter will automatically query for the appropriate
+            # EKS optimized AMI via AWS Systems Manager (SSM)
+            # bottlerocket, al2, al2023, windows2019, windows2022
+            # https://karpenter.sh/v1.0/concepts/nodeclasses/#specamiselectorterms
+            ami_selector_terms:
+              - alias: al2@latest
+            # Karpenter node class block device mappings.
+            block_device_mappings:
+              - deviceName: /dev/xvda
+                ebs:
+                  volumeSize: 200Gi
+                  volumeType: gp3
+                  encrypted: true
+                  deleteOnTermination: true
           # extra-pool-example:
           #   <<: *node_pool_defaults
           #   # here's an example of an extra node pool

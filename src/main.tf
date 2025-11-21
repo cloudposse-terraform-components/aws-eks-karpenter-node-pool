@@ -35,7 +35,7 @@ resource "kubernetes_manifest" "node_pool" {
       disruption = merge({
         consolidationPolicy = each.value.disruption.consolidation_policy
         consolidateAfter    = each.value.disruption.consolidate_after == null ? 0 : each.value.disruption.consolidate_after
-      },
+        },
         length(each.value.disruption.budgets) == 0 ? {} : {
           budgets = each.value.disruption.budgets
         }
@@ -43,8 +43,8 @@ resource "kubernetes_manifest" "node_pool" {
       template = {
         metadata = merge(
           {},
-          (each.value.labels != null && length(each.value.labels) > 0) ? { labels = each.value.labels } : {},
-          (each.value.annotations != null && length(each.value.annotations) > 0) ? { annotations = each.value.annotations } : {}
+          try(length(each.value.labels), 0) > 0 ? { labels = each.value.labels } : {},
+          try(length(each.value.annotations), 0) > 0 ? { annotations = each.value.annotations } : {}
         )
         spec = merge({
           nodeClassRef = {
@@ -53,16 +53,15 @@ resource "kubernetes_manifest" "node_pool" {
             name  = coalesce(each.value.name, each.key)
           },
           expireAfter = each.value.disruption.max_instance_lifetime
-        },
+          },
           try(length(each.value.requirements), 0) == 0 ? {} : {
             requirements = [for r in each.value.requirements : merge({
               key      = r.key
               operator = r.operator
-            },
+              },
               try(length(r.values), 0) == 0 ? {} : {
                 values = r.values
-              }
-            )]
+            })]
           },
           try(length(each.value.taints), 0) == 0 ? {} : {
             taints = each.value.taints
