@@ -49,6 +49,7 @@ components:
                   volumeType: gp3
                   encrypted: true
                   deleteOnTermination: true
+            detailed_monitoring: true
             user_data: |
               [settings.kubelet-device-plugins.nvidia]
               device-sharing-strategy = "time-slicing"
