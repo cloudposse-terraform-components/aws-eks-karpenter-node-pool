@@ -30,6 +30,7 @@ resource "kubernetes_manifest" "node_pool" {
       limits = {
         cpu    = each.value.total_cpu_limit
         memory = each.value.total_memory_limit
+        "nvidia.com/gpu" = try(each.value.total_gpu_limit, null)
       }
       weight = each.value.weight
       disruption = merge({
