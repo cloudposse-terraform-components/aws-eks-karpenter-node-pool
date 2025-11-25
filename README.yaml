@@ -58,6 +58,7 @@ usage: |-
               total_cpu_limit: "100"
               # The total memory of the cluster. Maps to spec.limits.memory in the Karpenter NodeClass
               total_memory_limit: "1000Gi"
+              total_gpu_limit: "1"
               # The weight of the node pool. See https://karpenter.sh/docs/concepts/scheduling/#weighted-nodepools
               weight: 50
               # Taints to apply to the nodes in the node pool. See https://karpenter.sh/docs/concepts/nodeclasses/#spectaints

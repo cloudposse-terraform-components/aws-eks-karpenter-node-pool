@@ -27,11 +27,10 @@ resource "kubernetes_manifest" "node_pool" {
       name = coalesce(each.value.name, each.key)
     }
     spec = {
-      limits = {
-        cpu    = each.value.total_cpu_limit
+      limits = merge({
+        cpu    = each.value.total_cpu_limit,
         memory = each.value.total_memory_limit
-        "nvidia.com/gpu" = try(each.value.total_gpu_limit, null)
-      }
+      }, try(each.value.gpu_total_limits, {}))
       weight = each.value.weight
       disruption = merge({
         consolidationPolicy = each.value.disruption.consolidation_policy

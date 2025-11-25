@@ -1,3 +1,5 @@
+# Additional resource limits (e.g., GPU, custom resources) to merge into spec.limits. Example: {"nvidia.com/gpu" = "1"}
+extra_resource_limits = optional(map(string), {})
 variable "region" {
   type        = string
   description = "AWS Region"
@@ -72,7 +74,8 @@ variable "node_pools" {
     total_cpu_limit = string
     # Karpenter provisioner total memory limit for all pods running on the EC2 instances launched by Karpenter
     total_memory_limit = string
-    total_gpu_limit = optional(string)
+    # Additional resource limits (e.g., GPU, custom resources) to merge into spec.limits. Example: {"nvidia.com/gpu" = "1"}
+    gpu_total_limits = optional(map(string), {})
     # Set a weight for this node pool.
     # See https://karpenter.sh/docs/concepts/scheduling/#weighted-nodepools
     weight      = optional(number, 50)
