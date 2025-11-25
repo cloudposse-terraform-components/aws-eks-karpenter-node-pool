@@ -59,9 +59,8 @@ usage: |-
               # The total memory of the cluster. Maps to spec.limits.memory in the Karpenter NodeClass
               total_memory_limit: "1000Gi"
               # The total GPU of the cluster. Maps to spec.limits for GPU in the Karpenter NodeClass
-              gpu_total_limits: {
+              gpu_total_limits:
                 "nvidia.com/gpu" = "1"
-              }
               # The weight of the node pool. See https://karpenter.sh/docs/concepts/scheduling/#weighted-nodepools
               weight: 50
               # Taints to apply to the nodes in the node pool. See https://karpenter.sh/docs/concepts/nodeclasses/#spectaints

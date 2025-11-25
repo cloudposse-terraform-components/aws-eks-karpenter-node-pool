@@ -33,9 +33,8 @@ components:
             # Karpenter node pool total memory limit for all pods running on the EC2 instances launched by Karpenter
             total_memory_limit: "1000Gi"
             # Karpenter node pool total GPU limit for all pods running on the EC2 instances launched by Karpenter
-            gpu_total_limits: {
-              "nvidia.com/gpu" = "1"
-            }
+            gpu_total_limits:
+              "nvidia.com/gpu": "1"
             # Karpenter node class metadata options
             metadata_options: {}
             # The AMI used by Karpenter node class when provisioning nodes.
