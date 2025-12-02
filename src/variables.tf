@@ -1,5 +1,3 @@
-# Additional resource limits (e.g., GPU, custom resources) to merge into spec.limits. Example: {"nvidia.com/gpu" = "1"}
-extra_resource_limits = optional(map(string), {})
 variable "region" {
   type        = string
   description = "AWS Region"
