@@ -32,6 +32,9 @@ components:
             total_cpu_limit: "100"
             # Karpenter node pool total memory limit for all pods running on the EC2 instances launched by Karpenter
             total_memory_limit: "1000Gi"
+            # Karpenter node pool total GPU limit for all pods running on the EC2 instances launched by Karpenter
+            gpu_total_limits:
+              "nvidia.com/gpu": "1"
             # Karpenter node class metadata options
             metadata_options: {}
             # The AMI used by Karpenter node class when provisioning nodes.
@@ -49,6 +52,10 @@ components:
                   volumeType: gp3
                   encrypted: true
                   deleteOnTermination: true
+            detailed_monitoring: true
+            user_data: |
+              [settings.kubelet-device-plugins.nvidia]
+              device-sharing-strategy = "time-slicing"
             # Set acceptable (In) and unacceptable (Out) Kubernetes and Karpenter values for node provisioning based on
             # Well-Known Labels and cloud-specific settings. These can include instance types, zones, computer architecture,
             # and capacity type (such as AWS spot or on-demand).

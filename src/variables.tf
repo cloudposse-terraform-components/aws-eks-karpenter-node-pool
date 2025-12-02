@@ -72,6 +72,8 @@ variable "node_pools" {
     total_cpu_limit = string
     # Karpenter provisioner total memory limit for all pods running on the EC2 instances launched by Karpenter
     total_memory_limit = string
+    # Additional resource limits (e.g., GPU, custom resources) to merge into spec.limits. Example: {"nvidia.com/gpu" = "1"}
+    gpu_total_limits = optional(map(string), {})
     # Set a weight for this node pool.
     # See https://karpenter.sh/docs/concepts/scheduling/#weighted-nodepools
     weight      = optional(number, 50)
@@ -96,6 +98,10 @@ variable "node_pools" {
       # httpTokens can be either "required" or "optional"
       httpTokens = optional(string, "required")
     }), {})
+    # Enable detailed monitoring for EC2 instances. See https://karpenter.sh/docs/concepts/nodeclasses/#specdetailedmonitoring
+    detailed_monitoring = optional(bool, false)
+    # User data script to pass to EC2 instances. See https://karpenter.sh/docs/concepts/nodeclasses/#specuserdata
+    user_data = optional(string, null)
     # ami_family dictates the default bootstrapping logic.
     # It is only required if you do not specify amiSelectorTerms.alias
     ami_family = optional(string, null)
