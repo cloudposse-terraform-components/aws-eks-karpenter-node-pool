@@ -152,7 +152,7 @@ This approach:
 
 For referencing components in different stacks:
 ```yaml
-eks_cluster_id: !terraform.state <stack>/eks/cluster cluster_id
+eks_cluster_id: !terraform.state eks/cluster <stack> cluster_id
 ```
 
 ### Option 3: Internal Remote State Modules (`remote_state_enabled: true`, default, deprecated)
