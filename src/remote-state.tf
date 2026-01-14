@@ -36,7 +36,7 @@ module "eks" {
   source  = "cloudposse/stack-config/yaml//modules/remote-state"
   version = "1.8.0"
 
-  enabled   = local.eks_remote_state_enabled
+  bypass    = local.eks_remote_state_enabled
   component = var.eks_component_name
 
   defaults = {
@@ -56,7 +56,7 @@ module "vpc" {
   source  = "cloudposse/stack-config/yaml//modules/remote-state"
   version = "1.8.0"
 
-  enabled   = local.vpc_remote_state_enabled
+  bypass    = local.vpc_remote_state_enabled
   component = var.vpc_component_name
 
   defaults = {
