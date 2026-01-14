@@ -20,6 +20,13 @@ locals {
     }, try(length(map.ebs), 0) == 0 ? {} : { ebs = { for ek, ev in map.ebs : ek => ev if ev != null } })
     ]
   }
+
+  # Karpenter IAM role - uses remote state or direct variable based on remote_state_enabled
+  karpenter_iam_role_name = (
+    local.eks_remote_state_enabled
+    ? module.eks.outputs.karpenter_iam_role_name
+    : var.karpenter_iam_role_name
+  )
 }
 
 # https://karpenter.sh/docs/concepts/nodeclasses/
@@ -33,7 +40,7 @@ resource "kubernetes_manifest" "ec2_node_class" {
       name = coalesce(each.value.name, each.key)
     }
     spec = merge({
-      role = module.eks.outputs.karpenter_iam_role_name
+      role = local.karpenter_iam_role_name
       subnetSelectorTerms = [for id in(each.value.private_subnets_enabled ? local.private_subnet_ids : local.public_subnet_ids) : {
         id = id
       }]

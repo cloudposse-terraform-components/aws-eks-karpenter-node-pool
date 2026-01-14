@@ -28,6 +28,100 @@ usage: |-
   [best practice](https://aws.github.io/aws-eks-best-practices/karpenter/#creating-nodepools) to create NodePools that are
   mutually exclusive or weighted.
 
+  ## Configuration Approaches
+
+  This component supports three configuration approaches controlled by the `remote_state_enabled` variable.
+
+  ### Option 1: Direct Input Variables (`remote_state_enabled: false`)
+
+  Set `remote_state_enabled: false` and provide the required values directly. This approach is simpler and avoids
+  cross-component dependencies.
+
+  **Required variables when `remote_state_enabled` is `false`:**
+  - `eks_cluster_id` - The EKS cluster ID
+  - `eks_cluster_endpoint` - The EKS cluster endpoint URL
+  - `eks_cluster_certificate_authority_data` - Base64 encoded cluster CA certificate
+  - `karpenter_iam_role_name` - The Karpenter IAM role name for EC2NodeClass
+  - `private_subnet_ids` - List of private subnet IDs (if using private subnets)
+  - `public_subnet_ids` - List of public subnet IDs (if using public subnets)
+
+  Example using direct inputs:
+
+  ```yaml
+  components:
+    terraform:
+      eks/karpenter-node-pool:
+        vars:
+          enabled: true
+          remote_state_enabled: false
+          name: "karpenter-node-pool"
+          eks_cluster_id: "my-cluster"
+          eks_cluster_endpoint: "https://XXXXXXXX.gr7.us-west-2.eks.amazonaws.com"
+          eks_cluster_certificate_authority_data: "LS0tLS1CRUdJTi..."
+          karpenter_iam_role_name: "my-cluster-karpenter"
+          private_subnet_ids:
+            - "subnet-xxxxxxxxx"
+            - "subnet-yyyyyyyyy"
+          # ... node_pools configuration
+  ```
+
+  ### Option 2: Using Atmos `!terraform.state` (Recommended)
+
+  For Atmos users, the recommended approach is to use `!terraform.state` to dynamically fetch values from
+  other component outputs and pass them as direct input variables. This keeps dependencies explicit in your
+  stack configuration without using internal remote-state modules.
+
+  Example using Atmos `!terraform.state`:
+
+  ```yaml
+  components:
+    terraform:
+      eks/karpenter-node-pool:
+        vars:
+          enabled: true
+          remote_state_enabled: false
+          name: "karpenter-node-pool"
+
+          # EKS cluster configuration from eks/cluster component
+          eks_cluster_id: !terraform.state eks/cluster cluster_id
+          eks_cluster_endpoint: !terraform.state eks/cluster cluster_endpoint
+          eks_cluster_certificate_authority_data: !terraform.state eks/cluster cluster_certificate_authority_data
+          karpenter_iam_role_name: !terraform.state eks/cluster karpenter_iam_role_name
+
+          # VPC configuration from vpc component
+          private_subnet_ids: !terraform.state vpc private_subnet_ids
+
+          # Node pool configuration
+          node_pools:
+            default:
+              name: default
+              private_subnets_enabled: true
+              # ... rest of node pool configuration
+  ```
+
+  This approach:
+  - Uses native Atmos functionality for cross-component references
+  - Makes dependencies explicit and visible in stack configuration
+  - Does not use internal remote-state modules (cleaner component code)
+  - Supports referencing components in different stacks with extended syntax
+
+  For referencing components in different stacks:
+  ```yaml
+  eks_cluster_id: !terraform.state <stack>/eks/cluster cluster_id
+  ```
+
+  ### Option 3: Internal Remote State Modules (`remote_state_enabled: true`, default, deprecated)
+
+  > **Warning:** The `remote_state_enabled: true` setting and `eks_component_name`/`vpc_component_name` variables
+  > are deprecated and will be removed in a future version. Please migrate to using `!terraform.state` (Option 2)
+  > or direct input variables (Option 1).
+
+  When `remote_state_enabled` is `true` (the default), the component uses internal CloudPosse remote-state modules
+  to fetch EKS cluster and VPC information. This approach is being phased out in favor of explicit variable passing
+  via `!terraform.state` which provides better visibility into component dependencies.
+
+  Example using CloudPosse remote state:
+
   ```yaml
   components:
     terraform:
@@ -37,7 +131,9 @@ usage: |-
             workspace_enabled: true
         vars:
           enabled: true
+          remote_state_enabled: true  # default, can be omitted
           eks_component_name: eks/cluster
+          vpc_component_name: vpc
           name: "karpenter-node-pool"
           # https://karpenter.sh/v0.36.0/docs/concepts/nodepools/
           node_pools:

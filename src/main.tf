@@ -4,8 +4,17 @@
 locals {
   enabled = module.this.enabled
 
-  private_subnet_ids = module.vpc.outputs.private_subnet_ids
-  public_subnet_ids  = module.vpc.outputs.public_subnet_ids
+  # Subnet configuration - uses remote state or direct variables based on remote_state_enabled
+  private_subnet_ids = (
+    local.vpc_remote_state_enabled
+    ? module.vpc.outputs.private_subnet_ids
+    : coalesce(var.private_subnet_ids, [])
+  )
+  public_subnet_ids = (
+    local.vpc_remote_state_enabled
+    ? module.vpc.outputs.public_subnet_ids
+    : coalesce(var.public_subnet_ids, [])
+  )
 
   node_pools = { for k, v in var.node_pools : k => v if local.enabled }
   kubelets_specs_filtered = { for k, v in local.node_pools : k => {

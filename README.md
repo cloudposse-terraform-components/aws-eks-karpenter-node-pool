@@ -73,6 +73,100 @@ If provisioning more than one NodePool, it is
 [best practice](https://aws.github.io/aws-eks-best-practices/karpenter/#creating-nodepools) to create NodePools that are
 mutually exclusive or weighted.
 
+## Configuration Approaches
+
+This component supports three configuration approaches controlled by the `remote_state_enabled` variable.
+
+### Option 1: Direct Input Variables (`remote_state_enabled: false`)
+
+Set `remote_state_enabled: false` and provide the required values directly. This approach is simpler and avoids
+cross-component dependencies.
+
+**Required variables when `remote_state_enabled` is `false`:**
+- `eks_cluster_id` - The EKS cluster ID
+- `eks_cluster_endpoint` - The EKS cluster endpoint URL
+- `eks_cluster_certificate_authority_data` - Base64 encoded cluster CA certificate
+- `karpenter_iam_role_name` - The Karpenter IAM role name for EC2NodeClass
+- `private_subnet_ids` - List of private subnet IDs (if using private subnets)
+- `public_subnet_ids` - List of public subnet IDs (if using public subnets)
+
+Example using direct inputs:
+
+```yaml
+components:
+  terraform:
+    eks/karpenter-node-pool:
+      vars:
+        enabled: true
+        remote_state_enabled: false
+        name: "karpenter-node-pool"
+        eks_cluster_id: "my-cluster"
+        eks_cluster_endpoint: "https://XXXXXXXX.gr7.us-west-2.eks.amazonaws.com"
+        eks_cluster_certificate_authority_data: "LS0tLS1CRUdJTi..."
+        karpenter_iam_role_name: "my-cluster-karpenter"
+        private_subnet_ids:
+          - "subnet-xxxxxxxxx"
+          - "subnet-yyyyyyyyy"
+        # ... node_pools configuration
+```
+
+### Option 2: Using Atmos `!terraform.state` (Recommended)
+
+For Atmos users, the recommended approach is to use `!terraform.state` to dynamically fetch values from
+other component outputs and pass them as direct input variables. This keeps dependencies explicit in your
+stack configuration without using internal remote-state modules.
+
+Example using Atmos `!terraform.state`:
+
+```yaml
+components:
+  terraform:
+    eks/karpenter-node-pool:
+      vars:
+        enabled: true
+        remote_state_enabled: false
+        name: "karpenter-node-pool"
+
+        # EKS cluster configuration from eks/cluster component
+        eks_cluster_id: !terraform.state eks/cluster cluster_id
+        eks_cluster_endpoint: !terraform.state eks/cluster cluster_endpoint
+        eks_cluster_certificate_authority_data: !terraform.state eks/cluster cluster_certificate_authority_data
+        karpenter_iam_role_name: !terraform.state eks/cluster karpenter_iam_role_name
+
+        # VPC configuration from vpc component
+        private_subnet_ids: !terraform.state vpc private_subnet_ids
+
+        # Node pool configuration
+        node_pools:
+          default:
+            name: default
+            private_subnets_enabled: true
+            # ... rest of node pool configuration
+```
+
+This approach:
+- Uses native Atmos functionality for cross-component references
+- Makes dependencies explicit and visible in stack configuration
+- Does not use internal remote-state modules (cleaner component code)
+- Supports referencing components in different stacks with extended syntax
+
+For referencing components in different stacks:
+```yaml
+eks_cluster_id: !terraform.state <stack>/eks/cluster cluster_id
+```
+
+### Option 3: Internal Remote State Modules (`remote_state_enabled: true`, default, deprecated)
+
+> **Warning:** The `remote_state_enabled: true` setting and `eks_component_name`/`vpc_component_name` variables
+> are deprecated and will be removed in a future version. Please migrate to using `!terraform.state` (Option 2)
+> or direct input variables (Option 1).
+
+When `remote_state_enabled` is `true` (the default), the component uses internal CloudPosse remote-state modules
+to fetch EKS cluster and VPC information. This approach is being phased out in favor of explicit variable passing
+via `!terraform.state` which provides better visibility into component dependencies.
+
+Example using CloudPosse remote state:
+
 ```yaml
 components:
   terraform:
@@ -82,7 +176,9 @@ components:
           workspace_enabled: true
       vars:
         enabled: true
+        remote_state_enabled: true  # default, can be omitted
         eks_component_name: eks/cluster
+        vpc_component_name: vpc
         name: "karpenter-node-pool"
         # https://karpenter.sh/v0.36.0/docs/concepts/nodepools/
         node_pools:
@@ -209,6 +305,7 @@ components:
 |------|---------|
 | <a name="provider_aws"></a> [aws](#provider\_aws) | >= 4.9.0, < 6.0.0 |
 | <a name="provider_kubernetes"></a> [kubernetes](#provider\_kubernetes) | >= 2.7.1, != 2.21.0 |
+| <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
 
 ## Modules
 
@@ -225,6 +322,7 @@ components:
 |------|------|
 | [kubernetes_manifest.ec2_node_class](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/manifest) | resource |
 | [kubernetes_manifest.node_pool](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/manifest) | resource |
+| [terraform_data.validate_config](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
 | [aws_eks_cluster_auth.eks](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/eks_cluster_auth) | data source |
 
 ## Inputs
@@ -236,13 +334,17 @@ components:
 | <a name="input_context"></a> [context](#input\_context) | Single object for setting entire context at once.<br/>See description of individual variables for details.<br/>Leave string and numeric variables as `null` to use default value.<br/>Individual variable settings (non-null) override settings in context object,<br/>except for attributes, tags, and additional\_tag\_map, which are merged. | `any` | <pre>{<br/>  "additional_tag_map": {},<br/>  "attributes": [],<br/>  "delimiter": null,<br/>  "descriptor_formats": {},<br/>  "enabled": true,<br/>  "environment": null,<br/>  "id_length_limit": null,<br/>  "label_key_case": null,<br/>  "label_order": [],<br/>  "label_value_case": null,<br/>  "labels_as_tags": [<br/>    "unset"<br/>  ],<br/>  "name": null,<br/>  "namespace": null,<br/>  "regex_replace_chars": null,<br/>  "stage": null,<br/>  "tags": {},<br/>  "tenant": null<br/>}</pre> | no |
 | <a name="input_delimiter"></a> [delimiter](#input\_delimiter) | Delimiter to be used between ID elements.<br/>Defaults to `-` (hyphen). Set to `""` to use no delimiter at all. | `string` | `null` | no |
 | <a name="input_descriptor_formats"></a> [descriptor\_formats](#input\_descriptor\_formats) | Describe additional descriptors to be output in the `descriptors` output map.<br/>Map of maps. Keys are names of descriptors. Values are maps of the form<br/>`{<br/>   format = string<br/>   labels = list(string)<br/>}`<br/>(Type is `any` so the map values can later be enhanced to provide additional options.)<br/>`format` is a Terraform format string to be passed to the `format()` function.<br/>`labels` is a list of labels, in order, to pass to `format()` function.<br/>Label values will be normalized before being passed to `format()` so they will be<br/>identical to how they appear in `id`.<br/>Default is `{}` (`descriptors` output will be empty). | `any` | `{}` | no |
-| <a name="input_eks_component_name"></a> [eks\_component\_name](#input\_eks\_component\_name) | The name of the eks component | `string` | `"eks/cluster"` | no |
+| <a name="input_eks_cluster_certificate_authority_data"></a> [eks\_cluster\_certificate\_authority\_data](#input\_eks\_cluster\_certificate\_authority\_data) | The base64 encoded certificate data required to communicate with the EKS cluster.<br/>Required when `remote_state_enabled` is `false`. | `string` | `null` | no |
+| <a name="input_eks_cluster_endpoint"></a> [eks\_cluster\_endpoint](#input\_eks\_cluster\_endpoint) | The EKS cluster endpoint URL. Required when `remote_state_enabled` is `false`.<br/>Used for Kubernetes and Helm provider configuration. | `string` | `null` | no |
+| <a name="input_eks_cluster_id"></a> [eks\_cluster\_id](#input\_eks\_cluster\_id) | The EKS cluster ID. Required when `remote_state_enabled` is `false`.<br/>Used for security group selection and provider authentication. | `string` | `null` | no |
+| <a name="input_eks_component_name"></a> [eks\_component\_name](#input\_eks\_component\_name) | The name of the EKS component. Used to fetch EKS cluster information from remote state<br/>when `remote_state_enabled` is `true`.<br/><br/>DEPRECATED: This variable (along with remote\_state\_enabled=true) is deprecated and<br/>will be removed in a future version. Set `remote_state_enabled = false` and use<br/>the direct EKS cluster input variables instead. | `string` | `"eks/cluster"` | no |
 | <a name="input_enabled"></a> [enabled](#input\_enabled) | Set to false to prevent the module from creating any resources | `bool` | `null` | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | ID element. Usually used for region e.g. 'uw2', 'us-west-2', OR role 'prod', 'staging', 'dev', 'UAT' | `string` | `null` | no |
 | <a name="input_helm_manifest_experiment_enabled"></a> [helm\_manifest\_experiment\_enabled](#input\_helm\_manifest\_experiment\_enabled) | Enable storing of the rendered manifest for helm\_release so the full diff of what is changing can been seen in the plan | `bool` | `false` | no |
 | <a name="input_id_length_limit"></a> [id\_length\_limit](#input\_id\_length\_limit) | Limit `id` to this many characters (minimum 6).<br/>Set to `0` for unlimited length.<br/>Set to `null` for keep the existing setting, which defaults to `0`.<br/>Does not affect `id_full`. | `number` | `null` | no |
 | <a name="input_import_profile_name"></a> [import\_profile\_name](#input\_import\_profile\_name) | AWS Profile name to use when importing a resource | `string` | `null` | no |
 | <a name="input_import_role_arn"></a> [import\_role\_arn](#input\_import\_role\_arn) | IAM Role ARN to use when importing a resource | `string` | `null` | no |
+| <a name="input_karpenter_iam_role_name"></a> [karpenter\_iam\_role\_name](#input\_karpenter\_iam\_role\_name) | The name of the Karpenter IAM role for EC2NodeClass.<br/>Required when `remote_state_enabled` is `false`. | `string` | `null` | no |
 | <a name="input_kube_data_auth_enabled"></a> [kube\_data\_auth\_enabled](#input\_kube\_data\_auth\_enabled) | If `true`, use an `aws_eks_cluster_auth` data source to authenticate to the EKS cluster.<br/>Disabled by `kubeconfig_file_enabled` or `kube_exec_auth_enabled`. | `bool` | `false` | no |
 | <a name="input_kube_exec_auth_aws_profile"></a> [kube\_exec\_auth\_aws\_profile](#input\_kube\_exec\_auth\_aws\_profile) | The AWS config profile for `aws eks get-token` to use | `string` | `""` | no |
 | <a name="input_kube_exec_auth_aws_profile_enabled"></a> [kube\_exec\_auth\_aws\_profile\_enabled](#input\_kube\_exec\_auth\_aws\_profile\_enabled) | If `true`, pass `kube_exec_auth_aws_profile` as the `profile` to `aws eks get-token` | `bool` | `false` | no |
@@ -261,11 +363,15 @@ components:
 | <a name="input_name"></a> [name](#input\_name) | ID element. Usually the component or solution name, e.g. 'app' or 'jenkins'.<br/>This is the only ID element not also included as a `tag`.<br/>The "name" tag is set to the full `id` string. There is no tag with the value of the `name` input. | `string` | `null` | no |
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | ID element. Usually an abbreviation of your organization name, e.g. 'eg' or 'cp', to help ensure generated IDs are globally unique | `string` | `null` | no |
 | <a name="input_node_pools"></a> [node\_pools](#input\_node\_pools) | Configuration for node pools. See code for details. | <pre>map(object({<br/>    # The name of the Karpenter provisioner. The map key is used if this is not set.<br/>    name = optional(string)<br/>    # Whether to place EC2 instances launched by Karpenter into VPC private subnets. Set it to `false` to use public subnets.<br/>    private_subnets_enabled = bool<br/>    # The Disruption spec controls how Karpenter scales down the node group.<br/>    # See the example (sadly not the specific `spec.disruption` documentation) at https://karpenter.sh/docs/concepts/nodepools/ for details<br/>    disruption = optional(object({<br/>      # Describes which types of Nodes Karpenter should consider for consolidation.<br/>      # If using 'WhenUnderutilized', Karpenter will consider all nodes for consolidation and attempt to remove or<br/>      # replace Nodes when it discovers that the Node is underutilized and could be changed to reduce cost.<br/>      # If using `WhenEmpty`, Karpenter will only consider nodes for consolidation that contain no workload pods.<br/>      consolidation_policy = optional(string, "WhenUnderutilized")<br/><br/>      # The amount of time Karpenter should wait after discovering a consolidation decision (`go` duration string, s, m, or h).<br/>      # This value can currently (v0.36.0) only be set when the consolidationPolicy is 'WhenEmpty'.<br/>      # You can choose to disable consolidation entirely by setting the string value 'Never' here.<br/>      # Earlier versions of Karpenter called this field `ttl_seconds_after_empty`.<br/>      consolidate_after = optional(string)<br/><br/>      # The amount of time a Node can live on the cluster before being removed (`go` duration string, s, m, or h).<br/>      # You can choose to disable expiration entirely by setting the string value 'Never' here.<br/>      # This module sets a default of 336 hours (14 days), while the Karpenter default is 720 hours (30 days).<br/>      # Note that Karpenter calls this field "expiresAfter", and earlier versions called it `ttl_seconds_until_expired`,<br/>      # but we call it "max_instance_lifetime" to match the corresponding field in EC2 Auto Scaling Groups.<br/>      max_instance_lifetime = optional(string, "336h")<br/><br/>      # Budgets control the the maximum number of NodeClaims owned by this NodePool that can be terminating at once.<br/>      # See https://karpenter.sh/docs/concepts/disruption/#disruption-budgets for details.<br/>      # A percentage is the percentage of the total number of active, ready nodes not being deleted, rounded up.<br/>      # If there are multiple active budgets, Karpenter uses the most restrictive value.<br/>      # If left undefined, this will default to one budget with a value of nodes: 10%.<br/>      # Note that budgets do not prevent or limit involuntary terminations.<br/>      # Example:<br/>      #   On Weekdays during business hours, don't do any deprovisioning.<br/>      #     budgets = {<br/>      #       schedule = "0 9 * * mon-fri"<br/>      #       duration = 8h<br/>      #       nodes    = "0"<br/>      #     }<br/>      budgets = optional(list(object({<br/>        # The schedule specifies when a budget begins being active, using extended cronjob syntax.<br/>        # See https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#schedule-syntax for syntax details.<br/>        # Timezones are not supported. This field is required if Duration is set.<br/>        schedule = optional(string)<br/>        # Duration determines how long a Budget is active after each Scheduled start.<br/>        # If omitted, the budget is always active. This is required if Schedule is set.<br/>        # Must be a whole number of minutes and hours, as cron does not work in seconds,<br/>        # but since Go's `duration.String()` always adds a "0s" at the end, that is allowed.<br/>        duration = optional(string)<br/>        # The percentage or number of nodes that Karpenter can scale down during the budget.<br/>        nodes = string<br/>        # Reasons can be one of Drifted, Underutilized, or Empty<br/>        # If omitted, it’s assumed that the budget applies to all reasons.<br/>        # See https://karpenter.sh/v1.1/concepts/disruption/#reasons<br/>        reasons = optional(list(string))<br/>      })), [])<br/>    }), {})<br/>    # Karpenter provisioner total CPU limit for all pods running on the EC2 instances launched by Karpenter<br/>    total_cpu_limit = string<br/>    # Karpenter provisioner total memory limit for all pods running on the EC2 instances launched by Karpenter<br/>    total_memory_limit = string<br/>    # Additional resource limits (e.g., GPU, custom resources) to merge into spec.limits. Example: {"nvidia.com/gpu" = "1"}<br/>    gpu_total_limits = optional(map(string), {})<br/>    # Set a weight for this node pool.<br/>    # See https://karpenter.sh/docs/concepts/scheduling/#weighted-nodepools<br/>    weight      = optional(number, 50)<br/>    labels      = optional(map(string))<br/>    annotations = optional(map(string))<br/>    # Karpenter provisioner taints configuration. See https://aws.github.io/aws-eks-best-practices/karpenter/#create-provisioners-that-are-mutually-exclusive for more details<br/>    taints = optional(list(object({<br/>      key    = string<br/>      effect = string<br/>      value  = optional(string)<br/>    })))<br/>    startup_taints = optional(list(object({<br/>      key    = string<br/>      effect = string<br/>      value  = optional(string)<br/>    })))<br/>    # Karpenter node metadata options. See https://karpenter.sh/docs/concepts/nodeclasses/#specmetadataoptions for more details<br/>    metadata_options = optional(object({<br/>      httpEndpoint            = optional(string, "enabled")<br/>      httpProtocolIPv6        = optional(string, "disabled")<br/>      httpPutResponseHopLimit = optional(number, 2)<br/>      # httpTokens can be either "required" or "optional"<br/>      httpTokens = optional(string, "required")<br/>    }), {})<br/>    # Enable detailed monitoring for EC2 instances. See https://karpenter.sh/docs/concepts/nodeclasses/#specdetailedmonitoring<br/>    detailed_monitoring = optional(bool, false)<br/>    # User data script to pass to EC2 instances. See https://karpenter.sh/docs/concepts/nodeclasses/#specuserdata<br/>    user_data = optional(string, null)<br/>    # ami_family dictates the default bootstrapping logic.<br/>    # It is only required if you do not specify amiSelectorTerms.alias<br/>    ami_family = optional(string, null)<br/>    # Selectors for the AMI used by Karpenter provisioner when provisioning nodes.<br/>    # Usually use { alias = "<family>@latest" } but version can be pinned instead of "latest".<br/>    # Based on the ami_selector_terms, Karpenter will automatically query for the appropriate EKS optimized AMI via AWS Systems Manager (SSM)<br/>    ami_selector_terms = list(any)<br/>    # Karpenter nodes block device mappings. Controls the Elastic Block Storage volumes that Karpenter attaches to provisioned nodes.<br/>    # Karpenter uses default block device mappings for the AMI Family specified.<br/>    # For example, the Bottlerocket AMI Family defaults with two block device mappings,<br/>    # and normally you only want to scale `/dev/xvdb` where Containers and there storage are stored.<br/>    # Most other AMIs only have one device mapping at `/dev/xvda`.<br/>    # See https://karpenter.sh/docs/concepts/nodeclasses/#specblockdevicemappings for more details<br/>    block_device_mappings = list(object({<br/>      deviceName = string<br/>      ebs = optional(object({<br/>        volumeSize          = string<br/>        volumeType          = string<br/>        deleteOnTermination = optional(bool, true)<br/>        encrypted           = optional(bool, true)<br/>        iops                = optional(number)<br/>        kmsKeyID            = optional(string, "alias/aws/ebs")<br/>        snapshotID          = optional(string)<br/>        throughput          = optional(number)<br/>      }))<br/>    }))<br/>    # Set acceptable (In) and unacceptable (Out) Kubernetes and Karpenter values for node provisioning based on Well-Known Labels and cloud-specific settings. These can include instance types, zones, computer architecture, and capacity type (such as AWS spot or on-demand). See https://karpenter.sh/v0.18.0/provisioner/#specrequirements for more details<br/>    requirements = list(object({<br/>      key      = string<br/>      operator = string<br/>      # Operators like "Exists" and "DoesNotExist" do not require a value<br/>      values = optional(list(string))<br/>    }))<br/>    # Any values for spec.template.spec.kubelet allowed by Karpenter.<br/>    # Not fully specified, because they are subject to change.<br/>    # See:<br/>    #   https://karpenter.sh/docs/concepts/nodepools/#spectemplatespeckubelet<br/>    #   https://kubernetes.io/docs/reference/config-api/kubelet-config.v1beta1/<br/>    kubelet = optional(any, {})<br/>  }))</pre> | n/a | yes |
+| <a name="input_private_subnet_ids"></a> [private\_subnet\_ids](#input\_private\_subnet\_ids) | List of private subnet IDs for Karpenter to launch instances in.<br/>Required when `remote_state_enabled` is `false` and node pools use private subnets. | `list(string)` | `null` | no |
+| <a name="input_public_subnet_ids"></a> [public\_subnet\_ids](#input\_public\_subnet\_ids) | List of public subnet IDs for Karpenter to launch instances in.<br/>Required when `remote_state_enabled` is `false` and node pools use public subnets. | `list(string)` | `null` | no |
 | <a name="input_regex_replace_chars"></a> [regex\_replace\_chars](#input\_regex\_replace\_chars) | Terraform regular expression (regex) string.<br/>Characters matching the regex will be removed from the ID elements.<br/>If not set, `"/[^a-zA-Z0-9-]/"` is used to remove all characters other than hyphens, letters and digits. | `string` | `null` | no |
 | <a name="input_region"></a> [region](#input\_region) | AWS Region | `string` | n/a | yes |
+| <a name="input_remote_state_enabled"></a> [remote\_state\_enabled](#input\_remote\_state\_enabled) | If `true`, fetch EKS cluster and VPC information from Terraform remote state.<br/>If `false`, use direct input variables instead.<br/><br/>When set to `false`, the following variables are required:<br/>- var.eks\_cluster\_id<br/>- var.eks\_cluster\_endpoint<br/>- var.eks\_cluster\_certificate\_authority\_data<br/>- var.karpenter\_iam\_role\_name<br/>- var.private\_subnet\_ids and/or var.public\_subnet\_ids | `bool` | `true` | no |
 | <a name="input_stage"></a> [stage](#input\_stage) | ID element. Usually used to indicate role, e.g. 'prod', 'staging', 'source', 'build', 'test', 'deploy', 'release' | `string` | `null` | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | Additional tags (e.g. `{'BusinessUnit': 'XYZ'}`).<br/>Neither the tag keys nor the tag values will be modified by this module. | `map(string)` | `{}` | no |
 | <a name="input_tenant"></a> [tenant](#input\_tenant) | ID element \_(Rarely used, not included by default)\_. A customer identifier, indicating who this instance of a resource is for | `string` | `null` | no |
+| <a name="input_vpc_component_name"></a> [vpc\_component\_name](#input\_vpc\_component\_name) | The name of the VPC component. Used to fetch VPC information from remote state<br/>when `remote_state_enabled` is `true`.<br/><br/>DEPRECATED: This variable (along with remote\_state\_enabled=true) is deprecated and<br/>will be removed in a future version. Set `remote_state_enabled = false` and use<br/>the direct subnet ID input variables instead. | `string` | `"vpc"` | no |
 
 ## Outputs
 
