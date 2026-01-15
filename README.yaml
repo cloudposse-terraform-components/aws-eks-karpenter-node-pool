@@ -30,20 +30,12 @@ usage: |-
 
   ## Configuration Approaches
 
-  This component supports three configuration approaches controlled by the `remote_state_enabled` variable.
+  This component supports three configuration approaches controlled by the `account_map_enabled` variable.
 
-  ### Option 1: Direct Input Variables (`remote_state_enabled: false`)
+  ### Option 1: Direct Input Variables (`account_map_enabled: false`)
 
-  Set `remote_state_enabled: false` and provide the required values directly. This approach is simpler and avoids
-  cross-component dependencies.
-
-  **Required variables when `remote_state_enabled` is `false`:**
-  - `eks_cluster_id` - The EKS cluster ID
-  - `eks_cluster_endpoint` - The EKS cluster endpoint URL
-  - `eks_cluster_certificate_authority_data` - Base64 encoded cluster CA certificate
-  - `karpenter_iam_role_name` - The Karpenter IAM role name for EC2NodeClass
-  - `private_subnet_ids` - List of private subnet IDs (if using private subnets)
-  - `public_subnet_ids` - List of public subnet IDs (if using public subnets)
+  Set `account_map_enabled: false` and provide the required values via the `eks` and `vpc` object variables.
+  This approach is simpler and avoids cross-component dependencies.
 
   Example using direct inputs:
 
@@ -53,15 +45,17 @@ usage: |-
       eks/karpenter-node-pool:
         vars:
           enabled: true
-          remote_state_enabled: false
+          account_map_enabled: false
           name: "karpenter-node-pool"
-          eks_cluster_id: "my-cluster"
-          eks_cluster_endpoint: "https://XXXXXXXX.gr7.us-west-2.eks.amazonaws.com"
-          eks_cluster_certificate_authority_data: "LS0tLS1CRUdJTi..."
-          karpenter_iam_role_name: "my-cluster-karpenter"
-          private_subnet_ids:
-            - "subnet-xxxxxxxxx"
-            - "subnet-yyyyyyyyy"
+          eks:
+            eks_cluster_id: "my-cluster"
+            eks_cluster_endpoint: "https://XXXXXXXX.gr7.us-west-2.eks.amazonaws.com"
+            eks_cluster_certificate_authority_data: "LS0tLS1CRUdJTi..."
+            karpenter_iam_role_name: "my-cluster-karpenter"
+          vpc:
+            private_subnet_ids:
+              - "subnet-xxxxxxxxx"
+              - "subnet-yyyyyyyyy"
           # ... node_pools configuration
   ```
 
@@ -79,19 +73,15 @@ usage: |-
       eks/karpenter-node-pool:
         vars:
           enabled: true
-          remote_state_enabled: false
+          account_map_enabled: false
           name: "karpenter-node-pool"
-
-          # EKS cluster configuration from eks/cluster component
-          eks_cluster_id: !terraform.state eks/cluster cluster_id
-          eks_cluster_endpoint: !terraform.state eks/cluster cluster_endpoint
-          eks_cluster_certificate_authority_data: !terraform.state eks/cluster cluster_certificate_authority_data
-          karpenter_iam_role_name: !terraform.state eks/cluster karpenter_iam_role_name
-
-          # VPC configuration from vpc component
-          private_subnet_ids: !terraform.state vpc private_subnet_ids
-
-          # Node pool configuration
+          eks:
+            eks_cluster_id: !terraform.state eks/cluster eks_cluster_id
+            eks_cluster_endpoint: !terraform.state eks/cluster eks_cluster_endpoint
+            eks_cluster_certificate_authority_data: !terraform.state eks/cluster eks_cluster_certificate_authority_data
+            karpenter_iam_role_name: !terraform.state eks/cluster karpenter_iam_role_name
+          vpc:
+            private_subnet_ids: !terraform.state vpc private_subnet_ids
           node_pools:
             default:
               name: default
@@ -107,16 +97,17 @@ usage: |-
 
   For referencing components in different stacks:
   ```yaml
-  eks_cluster_id: !terraform.state eks/cluster <stack> cluster_id
+  eks:
+    eks_cluster_id: !terraform.state eks/cluster <stack> eks_cluster_id
   ```
 
-  ### Option 3: Internal Remote State Modules (`remote_state_enabled: true`, default, deprecated)
+  ### Option 3: Internal Remote State Modules (`account_map_enabled: true`, default, deprecated)
 
-  > **Warning:** The `remote_state_enabled: true` setting and `eks_component_name`/`vpc_component_name` variables
+  > **Warning:** The `account_map_enabled: true` setting and `eks_component_name`/`vpc_component_name` variables
   > are deprecated and will be removed in a future version. Please migrate to using `!terraform.state` (Option 2)
   > or direct input variables (Option 1).
 
-  When `remote_state_enabled` is `true` (the default), the component uses internal CloudPosse remote-state modules
+  When `account_map_enabled` is `true` (the default), the component uses internal CloudPosse remote-state modules
   to fetch EKS cluster and VPC information. This approach is being phased out in favor of explicit variable passing
   via `!terraform.state` which provides better visibility into component dependencies.
 
@@ -131,7 +122,7 @@ usage: |-
             workspace_enabled: true
         vars:
           enabled: true
-          remote_state_enabled: true  # default, can be omitted
+          account_map_enabled: true  # default, can be omitted
           eks_component_name: eks/cluster
           vpc_component_name: vpc
           name: "karpenter-node-pool"

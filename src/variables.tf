@@ -3,18 +3,12 @@ variable "region" {
   description = "AWS Region"
 }
 
-variable "remote_state_enabled" {
+variable "account_map_enabled" {
   type        = bool
   description = <<-EOT
-    If `true`, fetch EKS cluster and VPC information from Terraform remote state.
-    If `false`, use direct input variables instead.
-
-    When set to `false`, the following variables are required:
-    - var.eks_cluster_id
-    - var.eks_cluster_endpoint
-    - var.eks_cluster_certificate_authority_data
-    - var.karpenter_iam_role_name
-    - var.private_subnet_ids and/or var.public_subnet_ids
+    Enable account map and remote state lookups.
+    When `true`, fetch EKS cluster and VPC information from Terraform remote state.
+    When `false`, use the `eks` and `vpc` variables to provide values directly.
     EOT
   default     = true
   nullable    = false
@@ -24,10 +18,10 @@ variable "eks_component_name" {
   type        = string
   description = <<-EOT
     The name of the EKS component. Used to fetch EKS cluster information from remote state
-    when `remote_state_enabled` is `true`.
+    when `account_map_enabled` is `true`.
 
-    DEPRECATED: This variable (along with remote_state_enabled=true) is deprecated and
-    will be removed in a future version. Set `remote_state_enabled = false` and use
+    DEPRECATED: This variable (along with account_map_enabled=true) is deprecated and
+    will be removed in a future version. Set `account_map_enabled = false` and use
     the direct EKS cluster input variables instead.
     EOT
   default     = "eks/cluster"
@@ -37,73 +31,58 @@ variable "vpc_component_name" {
   type        = string
   description = <<-EOT
     The name of the VPC component. Used to fetch VPC information from remote state
-    when `remote_state_enabled` is `true`.
+    when `account_map_enabled` is `true`.
 
-    DEPRECATED: This variable (along with remote_state_enabled=true) is deprecated and
-    will be removed in a future version. Set `remote_state_enabled = false` and use
+    DEPRECATED: This variable (along with account_map_enabled=true) is deprecated and
+    will be removed in a future version. Set `account_map_enabled = false` and use
     the direct subnet ID input variables instead.
     EOT
   default     = "vpc"
 }
 
 ###############################################################################
-# Direct input variables (required when remote_state_enabled = false)
+# Direct input variables (used when account_map_enabled = false)
 ###############################################################################
 
-variable "eks_cluster_id" {
-  type        = string
+variable "eks" {
+  type = object({
+    eks_cluster_id                         = optional(string, "")
+    eks_cluster_arn                        = optional(string, "")
+    eks_cluster_endpoint                   = optional(string, "")
+    eks_cluster_certificate_authority_data = optional(string, "")
+    eks_cluster_identity_oidc_issuer       = optional(string, "")
+    karpenter_iam_role_name                = optional(string, "")
+    karpenter_node_role_arn                = optional(string, "")
+  })
   description = <<-EOT
-    The EKS cluster ID. Required when `remote_state_enabled` is `false`.
-    Used for security group selection and provider authentication.
+    EKS cluster configuration to use when `account_map_enabled` is `false`.
+    Provides cluster details for Karpenter node pool configuration.
     EOT
-  default     = null
+  default = {
+    eks_cluster_id                         = ""
+    eks_cluster_arn                        = ""
+    eks_cluster_endpoint                   = ""
+    eks_cluster_certificate_authority_data = ""
+    eks_cluster_identity_oidc_issuer       = ""
+    karpenter_iam_role_name                = ""
+    karpenter_node_role_arn                = ""
+  }
 }
 
-variable "eks_cluster_endpoint" {
-  type        = string
+variable "vpc" {
+  type = object({
+    private_subnet_ids = optional(list(string), [])
+    public_subnet_ids  = optional(list(string), [])
+  })
   description = <<-EOT
-    The EKS cluster endpoint URL. Required when `remote_state_enabled` is `false`.
-    Used for Kubernetes and Helm provider configuration.
+    VPC configuration to use when `account_map_enabled` is `false`.
+    Provides subnet IDs for Karpenter to launch instances in.
     EOT
-  default     = null
+  default = {
+    private_subnet_ids = []
+    public_subnet_ids  = []
+  }
 }
-
-variable "eks_cluster_certificate_authority_data" {
-  type        = string
-  description = <<-EOT
-    The base64 encoded certificate data required to communicate with the EKS cluster.
-    Required when `remote_state_enabled` is `false`.
-    EOT
-  default     = null
-}
-
-variable "karpenter_iam_role_name" {
-  type        = string
-  description = <<-EOT
-    The name of the Karpenter IAM role for EC2NodeClass.
-    Required when `remote_state_enabled` is `false`.
-    EOT
-  default     = null
-}
-
-variable "private_subnet_ids" {
-  type        = list(string)
-  description = <<-EOT
-    List of private subnet IDs for Karpenter to launch instances in.
-    Required when `remote_state_enabled` is `false` and node pools use private subnets.
-    EOT
-  default     = null
-}
-
-variable "public_subnet_ids" {
-  type        = list(string)
-  description = <<-EOT
-    List of public subnet IDs for Karpenter to launch instances in.
-    Required when `remote_state_enabled` is `false` and node pools use public subnets.
-    EOT
-  default     = null
-}
-
 
 variable "node_pools" {
   type = map(object({
