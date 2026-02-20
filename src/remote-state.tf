@@ -4,7 +4,7 @@ locals {
 
 module "eks" {
   source  = "cloudposse/stack-config/yaml//modules/remote-state"
-  version = "1.8.0"
+  version = "2.0.0"
 
   bypass    = !local.account_map_enabled
   component = var.eks_component_name
@@ -24,7 +24,7 @@ module "eks" {
 
 module "vpc" {
   source  = "cloudposse/stack-config/yaml//modules/remote-state"
-  version = "1.8.0"
+  version = "2.0.0"
 
   bypass    = !local.account_map_enabled
   component = var.vpc_component_name
