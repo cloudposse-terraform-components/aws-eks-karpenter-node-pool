@@ -1,37 +1,29 @@
-# This is the default providers.tf when account map is disabled.
+provider "aws" {
+  region = var.region
 
-variable "account_map_enabled" {
-  type        = bool
-  description = "Enable the account map component"
-  default     = false
-}
+  profile = module.iam_roles.profiles_enabled ? coalesce(var.import_profile_name, module.iam_roles.terraform_profile_name) : null
 
-variable "account_map" {
-  type = object({
-    full_account_map              = map(string)
-    audit_account_account_name    = optional(string, "")
-    root_account_account_name     = optional(string, "")
-    identity_account_account_name = optional(string, "")
-    aws_partition                 = optional(string, "aws")
-    iam_role_arn_templates        = optional(map(string), {})
-  })
-  description = "Map of account names (tenant-stage format) to account IDs. Used to verify we're targeting the correct AWS account. Optional attributes support component-specific functionality (e.g., audit_account_account_name for cloudtrail, root_account_account_name for aws-sso)."
-  default = {
-    full_account_map              = {}
-    audit_account_account_name    = ""
-    root_account_account_name     = ""
-    identity_account_account_name = ""
-    aws_partition                 = "aws"
-    iam_role_arn_templates        = {}
+  dynamic "assume_role" {
+    for_each = compact([module.iam_roles.terraform_role_arn])
+    content {
+      role_arn = coalesce(var.import_role_arn, module.iam_roles.terraform_role_arn)
+    }
   }
 }
 
-provider "aws" {
-  region = var.region
+module "iam_roles" {
+  source  = "../../account-map/modules/iam-roles"
+  context = module.this.context
 }
 
-# dummy module to satisfy the module dependency
-module "iam_roles" {
-  source  = "cloudposse/label/null"
-  context = module.this.context
+variable "import_profile_name" {
+  type        = string
+  default     = null
+  description = "AWS Profile name to use when importing a resource"
+}
+
+variable "import_role_arn" {
+  type        = string
+  default     = null
+  description = "IAM Role ARN to use when importing a resource"
 }
