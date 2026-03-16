@@ -34,6 +34,91 @@ If provisioning more than one NodePool, it is
 [best practice](https://aws.github.io/aws-eks-best-practices/karpenter/#creating-nodepools) to create NodePools that are
 mutually exclusive or weighted.
 
+## Configuration Approaches
+
+This component supports three configuration approaches controlled by the `account_map_enabled` variable.
+
+### Option 1: Direct Input Variables (`account_map_enabled: false`)
+
+Set `account_map_enabled: false` and provide the required values via the `eks` and `vpc` object variables.
+This approach is simpler and avoids cross-component dependencies.
+
+Example using direct inputs:
+
+```yaml
+components:
+  terraform:
+    eks/karpenter-node-pool:
+      vars:
+        enabled: true
+        account_map_enabled: false
+        name: "karpenter-node-pool"
+        eks:
+          eks_cluster_id: "my-cluster"
+          eks_cluster_endpoint: "https://XXXXXXXX.gr7.us-west-2.eks.amazonaws.com"
+          eks_cluster_certificate_authority_data: "LS0tLS1CRUdJTi..."
+          karpenter_iam_role_name: "my-cluster-karpenter"
+        vpc:
+          private_subnet_ids:
+            - "subnet-xxxxxxxxx"
+            - "subnet-yyyyyyyyy"
+        # ... node_pools configuration
+```
+
+### Option 2: Using Atmos `!terraform.state` (Recommended)
+
+For Atmos users, the recommended approach is to use `!terraform.state` to dynamically fetch values from
+other component outputs and pass them as direct input variables. This keeps dependencies explicit in your
+stack configuration without using internal remote-state modules.
+
+Example using Atmos `!terraform.state`:
+
+```yaml
+components:
+  terraform:
+    eks/karpenter-node-pool:
+      vars:
+        enabled: true
+        account_map_enabled: false
+        name: "karpenter-node-pool"
+        eks:
+          eks_cluster_id: !terraform.state eks/cluster eks_cluster_id
+          eks_cluster_endpoint: !terraform.state eks/cluster eks_cluster_endpoint
+          eks_cluster_certificate_authority_data: !terraform.state eks/cluster eks_cluster_certificate_authority_data
+          karpenter_iam_role_name: !terraform.state eks/cluster karpenter_iam_role_name
+        vpc:
+          private_subnet_ids: !terraform.state vpc private_subnet_ids
+        node_pools:
+          default:
+            name: default
+            private_subnets_enabled: true
+            # ... rest of node pool configuration
+```
+
+This approach:
+- Uses native Atmos functionality for cross-component references
+- Makes dependencies explicit and visible in stack configuration
+- Does not use internal remote-state modules (cleaner component code)
+- Supports referencing components in different stacks with extended syntax
+
+For referencing components in different stacks:
+```yaml
+eks:
+  eks_cluster_id: !terraform.state eks/cluster <stack> eks_cluster_id
+```
+
+### Option 3: Internal Remote State Modules (`account_map_enabled: true`, default, deprecated)
+
+> **Warning:** The `account_map_enabled: true` setting and `eks_component_name`/`vpc_component_name` variables
+> are deprecated and will be removed in a future version. Please migrate to using `!terraform.state` (Option 2)
+> or direct input variables (Option 1).
+
+When `account_map_enabled` is `true` (the default), the component uses internal CloudPosse remote-state modules
+to fetch EKS cluster and VPC information. This approach is being phased out in favor of explicit variable passing
+via `!terraform.state` which provides better visibility into component dependencies.
+
+Example using CloudPosse remote state:
+
 ```yaml
 components:
   terraform:
@@ -43,7 +128,9 @@ components:
           workspace_enabled: true
       vars:
         enabled: true
+        account_map_enabled: true  # default, can be omitted
         eks_component_name: eks/cluster
+        vpc_component_name: vpc
         name: "karpenter-node-pool"
         # https://karpenter.sh/v0.36.0/docs/concepts/nodepools/
         node_pools:
@@ -180,12 +267,14 @@ components:
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| <a name="input_account_map_enabled"></a> [account\_map\_enabled](#input\_account\_map\_enabled) | Enable account map and remote state lookups.<br/>When `true`, fetch EKS cluster and VPC information from Terraform remote state.<br/>When `false`, use the `eks` and `vpc` variables to provide values directly. | `bool` | `true` | no |
 | <a name="input_additional_tag_map"></a> [additional\_tag\_map](#input\_additional\_tag\_map) | Additional key-value pairs to add to each map in `tags_as_list_of_maps`. Not added to `tags` or `id`.<br/>This is for some rare cases where resources want additional configuration of tags<br/>and therefore take a list of maps with tag key, value, and additional configuration. | `map(string)` | `{}` | no |
 | <a name="input_attributes"></a> [attributes](#input\_attributes) | ID element. Additional attributes (e.g. `workers` or `cluster`) to add to `id`,<br/>in the order they appear in the list. New attributes are appended to the<br/>end of the list. The elements of the list are joined by the `delimiter`<br/>and treated as a single ID element. | `list(string)` | `[]` | no |
 | <a name="input_context"></a> [context](#input\_context) | Single object for setting entire context at once.<br/>See description of individual variables for details.<br/>Leave string and numeric variables as `null` to use default value.<br/>Individual variable settings (non-null) override settings in context object,<br/>except for attributes, tags, and additional\_tag\_map, which are merged. | `any` | <pre>{<br/>  "additional_tag_map": {},<br/>  "attributes": [],<br/>  "delimiter": null,<br/>  "descriptor_formats": {},<br/>  "enabled": true,<br/>  "environment": null,<br/>  "id_length_limit": null,<br/>  "label_key_case": null,<br/>  "label_order": [],<br/>  "label_value_case": null,<br/>  "labels_as_tags": [<br/>    "unset"<br/>  ],<br/>  "name": null,<br/>  "namespace": null,<br/>  "regex_replace_chars": null,<br/>  "stage": null,<br/>  "tags": {},<br/>  "tenant": null<br/>}</pre> | no |
 | <a name="input_delimiter"></a> [delimiter](#input\_delimiter) | Delimiter to be used between ID elements.<br/>Defaults to `-` (hyphen). Set to `""` to use no delimiter at all. | `string` | `null` | no |
 | <a name="input_descriptor_formats"></a> [descriptor\_formats](#input\_descriptor\_formats) | Describe additional descriptors to be output in the `descriptors` output map.<br/>Map of maps. Keys are names of descriptors. Values are maps of the form<br/>`{<br/>   format = string<br/>   labels = list(string)<br/>}`<br/>(Type is `any` so the map values can later be enhanced to provide additional options.)<br/>`format` is a Terraform format string to be passed to the `format()` function.<br/>`labels` is a list of labels, in order, to pass to `format()` function.<br/>Label values will be normalized before being passed to `format()` so they will be<br/>identical to how they appear in `id`.<br/>Default is `{}` (`descriptors` output will be empty). | `any` | `{}` | no |
-| <a name="input_eks_component_name"></a> [eks\_component\_name](#input\_eks\_component\_name) | The name of the eks component | `string` | `"eks/cluster"` | no |
+| <a name="input_eks"></a> [eks](#input\_eks) | EKS cluster configuration to use when `account_map_enabled` is `false`.<br/>Provides cluster details for Karpenter node pool configuration. | <pre>object({<br/>    eks_cluster_id                         = optional(string, "")<br/>    eks_cluster_arn                        = optional(string, "")<br/>    eks_cluster_endpoint                   = optional(string, "")<br/>    eks_cluster_certificate_authority_data = optional(string, "")<br/>    eks_cluster_identity_oidc_issuer       = optional(string, "")<br/>    karpenter_iam_role_name                = optional(string, "")<br/>    karpenter_node_role_arn                = optional(string, "")<br/>  })</pre> | <pre>{<br/>  "eks_cluster_arn": "",<br/>  "eks_cluster_certificate_authority_data": "",<br/>  "eks_cluster_endpoint": "",<br/>  "eks_cluster_id": "",<br/>  "eks_cluster_identity_oidc_issuer": "",<br/>  "karpenter_iam_role_name": "",<br/>  "karpenter_node_role_arn": ""<br/>}</pre> | no |
+| <a name="input_eks_component_name"></a> [eks\_component\_name](#input\_eks\_component\_name) | The name of the EKS component. Used to fetch EKS cluster information from remote state<br/>when `account_map_enabled` is `true`.<br/><br/>DEPRECATED: This variable (along with account\_map\_enabled=true) is deprecated and<br/>will be removed in a future version. Set `account_map_enabled = false` and use<br/>the direct EKS cluster input variables instead. | `string` | `"eks/cluster"` | no |
 | <a name="input_enabled"></a> [enabled](#input\_enabled) | Set to false to prevent the module from creating any resources | `bool` | `null` | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | ID element. Usually used for region e.g. 'uw2', 'us-west-2', OR role 'prod', 'staging', 'dev', 'UAT' | `string` | `null` | no |
 | <a name="input_helm_manifest_experiment_enabled"></a> [helm\_manifest\_experiment\_enabled](#input\_helm\_manifest\_experiment\_enabled) | Enable storing of the rendered manifest for helm\_release so the full diff of what is changing can been seen in the plan | `bool` | `false` | no |
@@ -215,6 +304,8 @@ components:
 | <a name="input_stage"></a> [stage](#input\_stage) | ID element. Usually used to indicate role, e.g. 'prod', 'staging', 'source', 'build', 'test', 'deploy', 'release' | `string` | `null` | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | Additional tags (e.g. `{'BusinessUnit': 'XYZ'}`).<br/>Neither the tag keys nor the tag values will be modified by this module. | `map(string)` | `{}` | no |
 | <a name="input_tenant"></a> [tenant](#input\_tenant) | ID element \_(Rarely used, not included by default)\_. A customer identifier, indicating who this instance of a resource is for | `string` | `null` | no |
+| <a name="input_vpc"></a> [vpc](#input\_vpc) | VPC configuration to use when `account_map_enabled` is `false`.<br/>Provides subnet IDs for Karpenter to launch instances in. | <pre>object({<br/>    private_subnet_ids = optional(list(string), [])<br/>    public_subnet_ids  = optional(list(string), [])<br/>  })</pre> | <pre>{<br/>  "private_subnet_ids": [],<br/>  "public_subnet_ids": []<br/>}</pre> | no |
+| <a name="input_vpc_component_name"></a> [vpc\_component\_name](#input\_vpc\_component\_name) | The name of the VPC component. Used to fetch VPC information from remote state<br/>when `account_map_enabled` is `true`.<br/><br/>DEPRECATED: This variable (along with account\_map\_enabled=true) is deprecated and<br/>will be removed in a future version. Set `account_map_enabled = false` and use<br/>the direct subnet ID input variables instead. | `string` | `"vpc"` | no |
 
 ## Outputs
 
