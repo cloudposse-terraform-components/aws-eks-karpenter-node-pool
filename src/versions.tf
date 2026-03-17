@@ -5,6 +5,10 @@ terraform {
     aws = {
       source  = "hashicorp/aws"
       version = ">= 4.9.0, < 6.0.0"
+      utils = {
+        source  = "cloudposse/utils"
+        version = ">= 1.7.1, != 1.4.0, < 1.32.0"
+      }
     }
     helm = {
       source  = "hashicorp/helm"
