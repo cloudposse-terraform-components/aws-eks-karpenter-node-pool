@@ -1,3 +1,8 @@
+
+###############################################################################
+# Direct input variables (used when account_map_enabled = false)
+###############################################################################
+
 variable "eks" {
   type = object({
     eks_cluster_id                         = optional(string, null)
@@ -13,13 +18,29 @@ variable "eks" {
   nullable    = true
 }
 
+
+variable "vpc" {
+  type = object({
+    private_subnet_ids = optional(list(string), [])
+    public_subnet_ids  = optional(list(string), [])
+  })
+  description = <<-EOT
+    VPC configuration to use when `account_map_enabled` is `false`.
+    Provides subnet IDs for Karpenter to launch instances in.
+    EOT
+  default = {
+    private_subnet_ids = []
+    public_subnet_ids  = []
+  }
+}
+
 module "eks" {
   source  = "cloudposse/stack-config/yaml//modules/remote-state"
   version = "1.8.0"
 
   component = var.eks_component_name
 
-  bypass = var.eks != null
+  bypass = !module.this.enabled || var.eks != null
 
   # Attempt to allow this component to be deleted from Terraform state even after the EKS cluster has been deleted
   defaults = {
@@ -39,7 +60,7 @@ module "vpc" {
   source  = "cloudposse/stack-config/yaml//modules/remote-state"
   version = "1.8.0"
 
-  bypass    = !local.account_map_enabled
+  bypass = !module.this.enabled || length(var.vpc.private_subnet_ids) + length(var.vpc.public_subnet_ids) > 0
   component = var.vpc_component_name
 
   defaults = {

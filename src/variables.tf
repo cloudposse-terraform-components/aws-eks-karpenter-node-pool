@@ -28,49 +28,6 @@ variable "vpc_component_name" {
   default     = "vpc"
 }
 
-###############################################################################
-# Direct input variables (used when account_map_enabled = false)
-###############################################################################
-
-variable "eks" {
-  type = object({
-    eks_cluster_id                         = optional(string, "")
-    eks_cluster_arn                        = optional(string, "")
-    eks_cluster_endpoint                   = optional(string, "")
-    eks_cluster_certificate_authority_data = optional(string, "")
-    eks_cluster_identity_oidc_issuer       = optional(string, "")
-    karpenter_iam_role_name                = optional(string, "")
-    karpenter_node_role_arn                = optional(string, "")
-  })
-  description = <<-EOT
-    EKS cluster configuration to use when `account_map_enabled` is `false`.
-    Provides cluster details for Karpenter node pool configuration.
-    EOT
-  default = {
-    eks_cluster_id                         = ""
-    eks_cluster_arn                        = ""
-    eks_cluster_endpoint                   = ""
-    eks_cluster_certificate_authority_data = ""
-    eks_cluster_identity_oidc_issuer       = ""
-    karpenter_iam_role_name                = ""
-    karpenter_node_role_arn                = ""
-  }
-}
-
-variable "vpc" {
-  type = object({
-    private_subnet_ids = optional(list(string), [])
-    public_subnet_ids  = optional(list(string), [])
-  })
-  description = <<-EOT
-    VPC configuration to use when `account_map_enabled` is `false`.
-    Provides subnet IDs for Karpenter to launch instances in.
-    EOT
-  default = {
-    private_subnet_ids = []
-    public_subnet_ids  = []
-  }
-}
 
 variable "node_pools" {
   type = map(object({
