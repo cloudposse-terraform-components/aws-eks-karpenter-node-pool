@@ -36,7 +36,7 @@ variable "vpc" {
 
 module "eks" {
   source  = "cloudposse/stack-config/yaml//modules/remote-state"
-  version = "1.8.0"
+  version = "2.0.0"
 
   component = var.eks_component_name
 
@@ -58,7 +58,7 @@ module "eks" {
 
 module "vpc" {
   source  = "cloudposse/stack-config/yaml//modules/remote-state"
-  version = "1.8.0"
+  version = "2.0.0"
 
   bypass    = !module.this.enabled || length(var.vpc.private_subnet_ids) + length(var.vpc.public_subnet_ids) > 0
   component = var.vpc_component_name
