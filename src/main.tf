@@ -7,6 +7,11 @@ locals {
   private_subnet_ids = module.vpc.outputs.private_subnet_ids
   public_subnet_ids  = module.vpc.outputs.public_subnet_ids
 
+  # Auto Mode uses a different NodeClass API
+  node_class_api_version = var.eks_auto_mode_enabled ? "eks.amazonaws.com/v1" : "karpenter.k8s.aws/v1"
+  node_class_kind        = var.eks_auto_mode_enabled ? "NodeClass" : "EC2NodeClass"
+  node_class_group       = var.eks_auto_mode_enabled ? "eks.amazonaws.com" : "karpenter.k8s.aws"
+
   node_pools = { for k, v in var.node_pools : k => v if local.enabled }
   kubelets_specs_filtered = { for k, v in local.node_pools : k => {
     for kk, vv in v.kubelet : kk => vv if vv != null
@@ -48,8 +53,8 @@ resource "kubernetes_manifest" "node_pool" {
         )
         spec = merge({
           nodeClassRef = {
-            group = "karpenter.k8s.aws"
-            kind  = "EC2NodeClass"
+            group = local.node_class_group
+            kind  = local.node_class_kind
             name  = coalesce(each.value.name, each.key)
           },
           expireAfter = each.value.disruption.max_instance_lifetime
@@ -77,7 +82,7 @@ resource "kubernetes_manifest" "node_pool" {
     }
   }
 
-  depends_on = [kubernetes_manifest.ec2_node_class]
+  depends_on = [kubernetes_manifest.ec2_node_class, kubernetes_manifest.auto_mode_node_class]
 
   # Marks the field as managed by Kubernetes to avoid continually detecting drift
   # https://github.com/hashicorp/terraform-provider-kubernetes/issues/1378
@@ -85,4 +90,14 @@ resource "kubernetes_manifest" "node_pool" {
     "spec.template.spec.taints",
     "spec.disruption.budgets"
   ]
+}
+
+check "auto_mode_node_pool_name_conflict" {
+  assert {
+    condition = !var.eks_auto_mode_enabled || length(setintersection(
+      toset([for k, v in var.node_pools : coalesce(v.name, k)]),
+      toset(["general-purpose", "system"])
+    )) == 0
+    error_message = "Custom NodePool names cannot conflict with Auto Mode built-in pools: 'general-purpose' and 'system'."
+  }
 }

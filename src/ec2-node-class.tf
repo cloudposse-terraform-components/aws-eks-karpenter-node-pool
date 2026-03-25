@@ -1,4 +1,4 @@
-# This provisions the EC2NodeClass for the NodePool.
+# This provisions the NodeClass for the NodePool.
 # https://karpenter.sh/docs/concepts/nodeclasses/
 #
 # We keep it separate from the NodePool creation,
@@ -7,7 +7,11 @@
 # with the Karpenter documentation, and to track changes as
 # Karpenter evolves.
 #
-
+# When eks_auto_mode_enabled is true, we create a simplified NodeClass
+# using the eks.amazonaws.com/v1 API instead of karpenter.k8s.aws/v1.
+# Auto Mode NodeClass does not support EC2-specific fields like
+# role, subnetSelectorTerms, securityGroupSelectorTerms, amiSelectorTerms,
+# metadataOptions, blockDeviceMappings, amiFamily, detailedMonitoring, or userData.
 
 locals {
   # If you include a field but set it to null, the field will be omitted from the Kubernetes resource,
@@ -20,11 +24,16 @@ locals {
     }, try(length(map.ebs), 0) == 0 ? {} : { ebs = { for ek, ev in map.ebs : ek => ev if ev != null } })
     ]
   }
+
+  # Split node pools by mode for the appropriate NodeClass resource
+  self_managed_node_pools = var.eks_auto_mode_enabled ? {} : local.node_pools
+  auto_mode_node_pools    = var.eks_auto_mode_enabled ? local.node_pools : {}
 }
 
+# Self-managed Karpenter EC2NodeClass (karpenter.k8s.aws/v1)
 # https://karpenter.sh/docs/concepts/nodeclasses/
 resource "kubernetes_manifest" "ec2_node_class" {
-  for_each = local.node_pools
+  for_each = local.self_managed_node_pools
 
   manifest = {
     apiVersion = "karpenter.k8s.aws/v1"
@@ -54,5 +63,24 @@ resource "kubernetes_manifest" "ec2_node_class" {
       each.value.ami_family == null ? {} : {
         amiFamily = each.value.ami_family
     })
+  }
+}
+
+# Auto Mode NodeClass (eks.amazonaws.com/v1)
+# https://docs.aws.amazon.com/eks/latest/userguide/automode.html
+# Auto Mode NodeClass has a minimal spec - EC2-specific fields are not supported.
+resource "kubernetes_manifest" "auto_mode_node_class" {
+  for_each = local.auto_mode_node_pools
+
+  manifest = {
+    apiVersion = local.node_class_api_version
+    kind       = local.node_class_kind
+    metadata = {
+      name = coalesce(each.value.name, each.key)
+    }
+    spec = merge(
+      {},
+      try(length(each.value.labels), 0) > 0 ? { tags = module.this.tags } : { tags = module.this.tags },
+    )
   }
 }

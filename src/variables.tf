@@ -84,6 +84,13 @@ variable "vpc" {
   }
 }
 
+variable "eks_auto_mode_enabled" {
+  type        = bool
+  description = "Set to true if the EKS cluster has Auto Mode compute enabled. Changes the NodeClass API from EC2NodeClass (karpenter.k8s.aws/v1) to NodeClass (eks.amazonaws.com/v1) for Auto Mode compatibility."
+  default     = false
+  nullable    = false
+}
+
 variable "node_pools" {
   type = map(object({
     # The name of the Karpenter provisioner. The map key is used if this is not set.
