@@ -26,8 +26,8 @@ locals {
   }
 
   # Split node pools by mode for the appropriate NodeClass resource
-  self_managed_node_pools = var.eks_auto_mode_enabled ? {} : local.node_pools
-  auto_mode_node_pools    = var.eks_auto_mode_enabled ? local.node_pools : {}
+  self_managed_node_pools = module.eks.outputs.auto_mode_enabled ? {} : local.node_pools
+  auto_mode_node_pools    = module.eks.outputs.auto_mode_enabled ? local.node_pools : {}
 }
 
 # Self-managed Karpenter EC2NodeClass (karpenter.k8s.aws/v1)
@@ -67,8 +67,14 @@ resource "kubernetes_manifest" "ec2_node_class" {
 }
 
 # Auto Mode NodeClass (eks.amazonaws.com/v1)
-# https://docs.aws.amazon.com/eks/latest/userguide/automode.html
-# Auto Mode NodeClass has a minimal spec - EC2-specific fields are not supported.
+# https://docs.aws.amazon.com/eks/latest/userguide/create-node-class.html
+# Auto Mode NodeClass does not support EC2-specific fields like
+# amiSelectorTerms, metadataOptions, blockDeviceMappings, amiFamily,
+# detailedMonitoring, or userData.
+#
+# Note: custom tags are NOT supported in Auto Mode NodeClass.
+# The AmazonEKSComputePolicy restricts launch template tag keys to
+# eks:* and kubernetes.io/cluster/* patterns only.
 resource "kubernetes_manifest" "auto_mode_node_class" {
   for_each = local.auto_mode_node_pools
 
@@ -79,8 +85,29 @@ resource "kubernetes_manifest" "auto_mode_node_class" {
       name = coalesce(each.value.name, each.key)
     }
     spec = merge(
-      {},
-      try(length(each.value.labels), 0) > 0 ? { tags = module.this.tags } : { tags = module.this.tags },
+      {
+        # Required fields
+        role = module.eks.outputs.auto_mode_node_role_name
+        subnetSelectorTerms = [for id in(each.value.private_subnets_enabled ? local.private_subnet_ids : local.public_subnet_ids) : {
+          id = id
+        }]
+        securityGroupSelectorTerms = [{
+          tags = {
+            "aws:eks:cluster-name" = local.eks_cluster_id
+          }
+        }]
+      },
+      # Optional fields - only included when set
+      each.value.ephemeral_storage != null ? { ephemeralStorage = each.value.ephemeral_storage } : {},
+      each.value.snat_policy != null ? { snatPolicy = each.value.snat_policy } : {},
+      each.value.network_policy != null ? { networkPolicy = each.value.network_policy } : {},
+      each.value.network_policy_event_logs != null ? { networkPolicyEventLogs = each.value.network_policy_event_logs } : {},
+      each.value.advanced_networking != null ? { advancedNetworking = each.value.advanced_networking } : {},
+      each.value.advanced_security != null ? { advancedSecurity = each.value.advanced_security } : {},
+      each.value.certificate_bundles != null ? { certificateBundles = each.value.certificate_bundles } : {},
+      each.value.capacity_reservation_selector_terms != null ? { capacityReservationSelectorTerms = each.value.capacity_reservation_selector_terms } : {},
+      each.value.pod_subnet_selector_terms != null ? { podSubnetSelectorTerms = each.value.pod_subnet_selector_terms } : {},
+      each.value.pod_security_group_selector_terms != null ? { podSecurityGroupSelectorTerms = each.value.pod_security_group_selector_terms } : {},
     )
   }
 }
