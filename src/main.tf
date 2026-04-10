@@ -8,9 +8,9 @@ locals {
   public_subnet_ids  = module.vpc.outputs.public_subnet_ids
 
   # Auto Mode uses a different NodeClass API
-  node_class_api_version = var.eks_auto_mode_enabled ? "eks.amazonaws.com/v1" : "karpenter.k8s.aws/v1"
-  node_class_kind        = var.eks_auto_mode_enabled ? "NodeClass" : "EC2NodeClass"
-  node_class_group       = var.eks_auto_mode_enabled ? "eks.amazonaws.com" : "karpenter.k8s.aws"
+  node_class_api_version = module.eks.outputs.auto_mode_enabled ? "eks.amazonaws.com/v1" : "karpenter.k8s.aws/v1"
+  node_class_kind        = module.eks.outputs.auto_mode_enabled ? "NodeClass" : "EC2NodeClass"
+  node_class_group       = module.eks.outputs.auto_mode_enabled ? "eks.amazonaws.com" : "karpenter.k8s.aws"
 
   node_pools = { for k, v in var.node_pools : k => v if local.enabled }
   kubelets_specs_filtered = { for k, v in local.node_pools : k => {
@@ -61,7 +61,8 @@ resource "kubernetes_manifest" "node_pool" {
           },
           try(length(each.value.requirements), 0) == 0 ? {} : {
             requirements = [for r in each.value.requirements : merge({
-              key      = r.key
+              # Auto Mode uses eks.amazonaws.com/* labels instead of karpenter.k8s.aws/*
+              key      = module.eks.outputs.auto_mode_enabled ? replace(r.key, "karpenter.k8s.aws/", "eks.amazonaws.com/") : r.key
               operator = r.operator
               },
               try(length(r.values), 0) == 0 ? {} : {
@@ -94,7 +95,7 @@ resource "kubernetes_manifest" "node_pool" {
 
 check "auto_mode_node_pool_name_conflict" {
   assert {
-    condition = !var.eks_auto_mode_enabled || length(setintersection(
+    condition = !module.eks.outputs.auto_mode_enabled || length(setintersection(
       toset([for k, v in var.node_pools : coalesce(v.name, k)]),
       toset(["general-purpose", "system"])
     )) == 0
