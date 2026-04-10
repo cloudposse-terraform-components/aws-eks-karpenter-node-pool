@@ -42,6 +42,8 @@ variable "eks" {
     eks_cluster_identity_oidc_issuer       = optional(string, "")
     karpenter_iam_role_name                = optional(string, "")
     karpenter_node_role_arn                = optional(string, "")
+    auto_mode_node_role_name               = optional(string, "")
+    auto_mode_enabled                      = optional(bool, false)
   })
   description = <<-EOT
     EKS cluster configuration to use when `account_map_enabled` is `false`.
@@ -55,6 +57,8 @@ variable "eks" {
     eks_cluster_identity_oidc_issuer       = ""
     karpenter_iam_role_name                = ""
     karpenter_node_role_arn                = ""
+    auto_mode_node_role_name               = ""
+    auto_mode_enabled                      = false
   }
 }
 
@@ -71,13 +75,6 @@ variable "vpc" {
     private_subnet_ids = []
     public_subnet_ids  = []
   }
-}
-
-variable "eks_auto_mode_enabled" {
-  type        = bool
-  description = "Set to true if the EKS cluster has Auto Mode compute enabled. Changes the NodeClass API from EC2NodeClass (karpenter.k8s.aws/v1) to NodeClass (eks.amazonaws.com/v1) for Auto Mode compatibility."
-  default     = false
-  nullable    = false
 }
 
 variable "node_pools" {
@@ -179,14 +176,14 @@ variable "node_pools" {
     # Selectors for the AMI used by Karpenter provisioner when provisioning nodes.
     # Usually use { alias = "<family>@latest" } but version can be pinned instead of "latest".
     # Based on the ami_selector_terms, Karpenter will automatically query for the appropriate EKS optimized AMI via AWS Systems Manager (SSM)
-    ami_selector_terms = list(any)
+    ami_selector_terms = optional(list(any))
     # Karpenter nodes block device mappings. Controls the Elastic Block Storage volumes that Karpenter attaches to provisioned nodes.
     # Karpenter uses default block device mappings for the AMI Family specified.
     # For example, the Bottlerocket AMI Family defaults with two block device mappings,
     # and normally you only want to scale `/dev/xvdb` where Containers and there storage are stored.
     # Most other AMIs only have one device mapping at `/dev/xvda`.
     # See https://karpenter.sh/docs/concepts/nodeclasses/#specblockdevicemappings for more details
-    block_device_mappings = list(object({
+    block_device_mappings = optional(list(object({
       deviceName = string
       ebs = optional(object({
         volumeSize          = string
@@ -198,7 +195,7 @@ variable "node_pools" {
         snapshotID          = optional(string)
         throughput          = optional(number)
       }))
-    }))
+    })))
     # Set acceptable (In) and unacceptable (Out) Kubernetes and Karpenter values for node provisioning based on Well-Known Labels and cloud-specific settings. These can include instance types, zones, computer architecture, and capacity type (such as AWS spot or on-demand). See https://karpenter.sh/v0.18.0/provisioner/#specrequirements for more details
     requirements = list(object({
       key      = string
@@ -212,6 +209,50 @@ variable "node_pools" {
     #   https://karpenter.sh/docs/concepts/nodepools/#spectemplatespeckubelet
     #   https://kubernetes.io/docs/reference/config-api/kubelet-config.v1beta1/
     kubelet = optional(any, {})
+
+    ###########################################################################
+    # Auto Mode NodeClass fields (eks.amazonaws.com/v1)
+    # https://docs.aws.amazon.com/eks/latest/userguide/create-node-class.html
+    # These fields are only used when eks_auto_mode_enabled = true.
+    # They are ignored for self-managed Karpenter (karpenter.k8s.aws/v1).
+    ###########################################################################
+
+    # Ephemeral storage configuration for Auto Mode nodes
+    ephemeral_storage = optional(object({
+      size       = optional(string)   # Range: 1-59000Gi
+      iops       = optional(number)   # Range: 3000-16000
+      throughput = optional(number)   # Range: 125-1000
+      kmsKeyID   = optional(string)   # KMS key ID, ARN, alias name, or alias ARN
+    }))
+    # SNAT policy: "Random" or "Disabled"
+    snat_policy = optional(string)
+    # Network policy: "DefaultAllow" or "DefaultDeny"
+    network_policy = optional(string)
+    # Network policy event logs: "Disabled" or "Enabled"
+    network_policy_event_logs = optional(string)
+    # Advanced networking configuration
+    advanced_networking = optional(object({
+      associatePublicIPAddress = optional(bool)
+      httpsProxy               = optional(string)
+      noProxy                  = optional(list(string))
+      ipv4PrefixSize           = optional(string) # "Auto" or "32"
+      enableV4Egress           = optional(bool)
+    }))
+    # Advanced security configuration
+    advanced_security = optional(object({
+      fips = optional(bool) # US regions only
+    }))
+    # Custom certificate bundles (e.g. for proxy)
+    certificate_bundles = optional(list(object({
+      name = string
+      data = string
+    })))
+    # Capacity reservation selector terms
+    capacity_reservation_selector_terms = optional(list(any))
+    # Pod subnet selector terms (must be set together with pod_security_group_selector_terms)
+    pod_subnet_selector_terms = optional(list(any))
+    # Pod security group selector terms (must be set together with pod_subnet_selector_terms)
+    pod_security_group_selector_terms = optional(list(any))
   }))
   description = "Configuration for node pools. See code for details."
   nullable    = false
