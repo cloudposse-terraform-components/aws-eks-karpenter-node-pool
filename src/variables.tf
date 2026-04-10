@@ -219,10 +219,10 @@ variable "node_pools" {
 
     # Ephemeral storage configuration for Auto Mode nodes
     ephemeral_storage = optional(object({
-      size       = optional(string)   # Range: 1-59000Gi
-      iops       = optional(number)   # Range: 3000-16000
-      throughput = optional(number)   # Range: 125-1000
-      kmsKeyID   = optional(string)   # KMS key ID, ARN, alias name, or alias ARN
+      size       = optional(string) # Range: 1-59000Gi
+      iops       = optional(number) # Range: 3000-16000
+      throughput = optional(number) # Range: 125-1000
+      kmsKeyID   = optional(string) # KMS key ID, ARN, alias name, or alias ARN
     }))
     # SNAT policy: "Random" or "Disabled"
     snat_policy = optional(string)
