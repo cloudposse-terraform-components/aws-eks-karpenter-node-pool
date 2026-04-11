@@ -95,7 +95,7 @@ resource "kubernetes_manifest" "node_pool" {
 
 check "auto_mode_node_pool_name_conflict" {
   assert {
-    condition = !module.eks.outputs.auto_mode_enabled || length(setintersection(
+    condition = !local.enabled || !module.eks.outputs.auto_mode_enabled || length(setintersection(
       toset([for k, v in var.node_pools : coalesce(v.name, k)]),
       toset(["general-purpose", "system"])
     )) == 0
