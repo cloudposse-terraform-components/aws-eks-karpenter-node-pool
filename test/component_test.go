@@ -22,6 +22,24 @@ type ComponentSuite struct {
 	helper.TestSuite
 }
 
+// assertReadyCondition verifies the resource has a Ready condition with status "True".
+// Auto Mode resources expose additional conditions (e.g. disruption-related) that are
+// not always "True", so iterating over every condition would produce false negatives.
+func assertReadyCondition(t *testing.T, conditions []interface{}, resourceName string) {
+	t.Helper()
+	for _, condition := range conditions {
+		conditionMap, ok := condition.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if conditionMap["type"] == "Ready" {
+			assert.Equal(t, "True", conditionMap["status"], "%s Ready condition should be True", resourceName)
+			return
+		}
+	}
+	assert.Fail(t, fmt.Sprintf("%s has no Ready condition", resourceName))
+}
+
 func (s *ComponentSuite) TestBasic() {
 	const component = "eks/karpenter-node-pool/basic"
 	const stack = "default-test"
@@ -158,10 +176,7 @@ func (s *ComponentSuite) TestAutoMode() {
 		conditions, exists, err := unstructured.NestedSlice(customNodeClass.Object, "status", "conditions")
 		assert.NoError(s.T(), err)
 		assert.True(s.T(), exists)
-		for _, condition := range conditions {
-			conditionMap := condition.(map[string]interface{})
-			assert.Equal(s.T(), conditionMap["status"], "True")
-		}
+		assertReadyCondition(s.T(), conditions, "NodeClass custom")
 	}
 
 	nodePoolGVR := schema.GroupVersionResource{
@@ -187,10 +202,7 @@ func (s *ComponentSuite) TestAutoMode() {
 		conditions, exists, err := unstructured.NestedSlice(customNodePool.Object, "status", "conditions")
 		assert.NoError(s.T(), err)
 		assert.True(s.T(), exists)
-		for _, condition := range conditions {
-			conditionMap := condition.(map[string]interface{})
-			assert.Equal(s.T(), conditionMap["status"], "True")
-		}
+		assertReadyCondition(s.T(), conditions, "NodePool custom")
 	}
 
 	s.DriftTest(component, stack, &inputs)
