@@ -5,8 +5,7 @@ components:
         component: eks/cluster
       vars:
         enabled: true
-        attributes:
-          - "auto"
+        name: "auto"
 
         # Auto Mode manages compute (Karpenter), networking, and storage.
         auto_mode_enabled: true
