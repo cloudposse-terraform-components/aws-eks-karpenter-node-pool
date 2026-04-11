@@ -41,7 +41,7 @@ components:
         cluster_endpoint_public_access: true
         cluster_log_retention_period: 90
         oidc_provider_enabled: true
-        cluster_kubernetes_version: "1.31"
+        cluster_kubernetes_version: "1.33"
 
         # vpc-cni, kube-proxy, coredns, and aws-ebs-csi-driver are managed by Auto Mode
         # and must not appear in the addons map.
