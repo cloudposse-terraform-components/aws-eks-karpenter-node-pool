@@ -1,0 +1,73 @@
+components:
+  terraform:
+    eks/karpenter-node-pool/auto-mode:
+      metadata:
+        component: eks/karpenter-node-pool
+      vars:
+        enabled: true
+        # Point at the auto-mode cluster instance.
+        eks_component_name: "eks/cluster/auto-mode"
+        kube_exec_auth_role_arn_enabled: false
+        kube_exec_auth_role_arn: "empty" # fulfills coalesce, but is disabled by above.
+        name: "karpenter-node-pool"
+        node_pools:
+          # Custom NodePool name. Must not collide with the Auto Mode built-in
+          # pools "general-purpose" or "system" (enforced by a check in main.tf).
+          custom:
+            labels:
+              test: test
+            annotations:
+              test: test
+            private_subnets_enabled: true
+            disruption:
+              consolidation_policy: "WhenEmptyOrUnderutilized"
+              consolidate_after: "70s"
+              max_instance_lifetime: "1h"
+              budgets:
+                - nodes: "20%"
+                  reasons:
+                    - "Underutilized"
+                    - "Empty"
+            total_cpu_limit: "100"
+            total_memory_limit: "1000Gi"
+
+            # Auto Mode NodeClass fields (eks.amazonaws.com/v1).
+            # These are ignored when Auto Mode is disabled.
+            ephemeral_storage:
+              size: "80Gi"
+              iops: 3000
+              throughput: 125
+            snat_policy: "Random"
+            network_policy: "DefaultAllow"
+            network_policy_event_logs: "Disabled"
+
+            # Requirements use karpenter.k8s.aws/* keys, which the component
+            # rewrites to eks.amazonaws.com/* automatically when Auto Mode is on.
+            requirements:
+              - key: "karpenter.k8s.aws/instance-cpu"
+                operator: Gt
+                values: ["1"]
+              - key: "karpenter.k8s.aws/instance-cpu"
+                operator: Lt
+                values: ["32"]
+              - key: "karpenter.sh/capacity-type"
+                operator: "In"
+                values:
+                  - "on-demand"
+                  - "spot"
+              - key: "kubernetes.io/arch"
+                operator: "In"
+                values:
+                  - "amd64"
+              - key: "karpenter.k8s.aws/instance-family"
+                operator: "In"
+                values:
+                  - c5
+                  - c6i
+                  - c7i
+                  - m5
+                  - m6i
+                  - m7i
+                  - r5
+                  - r6i
+                  - r7i

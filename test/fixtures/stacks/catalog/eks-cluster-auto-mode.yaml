@@ -1,0 +1,49 @@
+components:
+  terraform:
+    eks/cluster/auto-mode:
+      metadata:
+        component: eks/cluster
+      vars:
+        enabled: true
+        attributes:
+          - "auto"
+
+        # Auto Mode manages compute (Karpenter), networking, and storage.
+        auto_mode_enabled: true
+        # Self-managed Karpenter must be disabled when Auto Mode is enabled.
+        karpenter_iam_role_enabled: false
+
+        # Auto Mode does not need a bootstrap managed node group.
+        managed_node_groups_enabled: false
+        node_groups: {}
+
+        access_config:
+          authentication_mode: "API"
+          bootstrap_cluster_creator_admin_permissions: true
+
+        # Auto Mode does not need Fargate.
+        fargate_profiles: {}
+        legacy_fargate_1_role_per_profile_enabled: false
+
+        addons_depends_on: true
+        deploy_addons_to_fargate: false
+
+        allow_ingress_from_vpc_accounts: []
+        public_access_cidrs: ["0.0.0.0/0"]
+        allowed_cidr_blocks: []
+        allowed_security_groups: []
+
+        enabled_cluster_log_types: []
+        apply_config_map_aws_auth: true
+        availability_zone_abbreviation_type: fixed
+        cluster_private_subnets_only: true
+        cluster_encryption_config_enabled: true
+        cluster_endpoint_private_access: true
+        cluster_endpoint_public_access: true
+        cluster_log_retention_period: 90
+        oidc_provider_enabled: true
+        cluster_kubernetes_version: "1.31"
+
+        # vpc-cni, kube-proxy, coredns, and aws-ebs-csi-driver are managed by Auto Mode
+        # and must not appear in the addons map.
+        addons: {}
