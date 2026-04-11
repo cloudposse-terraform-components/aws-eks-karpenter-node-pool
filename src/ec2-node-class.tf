@@ -19,7 +19,7 @@ locals {
   # which will cause perpetual diff in the Terraform plan.
   # We strip out the null values from block_device_mappings here, because it is too complicated to do inline.
   node_block_device_mappings = { for pk, pv in local.node_pools : pk => [
-    for i, map in pv.block_device_mappings : merge({
+    for i, map in coalesce(pv.block_device_mappings, []) : merge({
       for dk, dv in map : dk => dv if dk != "ebs" && dv != null
     }, try(length(map.ebs), 0) == 0 ? {} : { ebs = { for ek, ev in map.ebs : ek => ev if ev != null } })
     ]
