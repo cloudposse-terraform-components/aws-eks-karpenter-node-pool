@@ -88,6 +88,7 @@ resource "kubernetes_manifest" "node_pool" {
   # Marks the field as managed by Kubernetes to avoid continually detecting drift
   # https://github.com/hashicorp/terraform-provider-kubernetes/issues/1378
   computed_fields = [
+    "metadata.annotations",
     "spec.template.spec.taints",
     "spec.disruption.budgets"
   ]
