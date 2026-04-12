@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/cloudposse/test-helpers/pkg/atmos"
 	helper "github.com/cloudposse/test-helpers/pkg/atmos/component-helper"
 	awsHelper "github.com/cloudposse/test-helpers/pkg/aws"
+	"github.com/gruntwork-io/terratest/modules/retry"
 	"github.com/stretchr/testify/assert"
 
 	corev1 "k8s.io/api/core/v1"
@@ -22,22 +24,39 @@ type ComponentSuite struct {
 	helper.TestSuite
 }
 
-// assertReadyCondition verifies the resource has a Ready condition with status "True".
-// Auto Mode resources expose additional conditions (e.g. disruption-related) that are
-// not always "True", so iterating over every condition would produce false negatives.
-func assertReadyCondition(t *testing.T, conditions []interface{}, resourceName string) {
+// waitForReadyCondition polls the given resource until its Ready condition is "True"
+// or the timeout expires. Auto Mode resources may take time to reconcile after creation.
+func waitForReadyCondition(t *testing.T, dynamicClient dynamic.Interface, gvr schema.GroupVersionResource, name string, timeout time.Duration) {
 	t.Helper()
-	for _, condition := range conditions {
-		conditionMap, ok := condition.(map[string]interface{})
-		if !ok {
-			continue
+	retry.DoWithRetry(t, fmt.Sprintf("Waiting for %s Ready condition", name), int(timeout.Seconds()/10), 10*time.Second, func() (string, error) {
+		resource, err := dynamicClient.Resource(gvr).Get(context.Background(), name, metav1.GetOptions{})
+		if err != nil {
+			return "", fmt.Errorf("failed to get resource %s: %v", name, err)
 		}
-		if conditionMap["type"] == "Ready" {
-			assert.Equal(t, "True", conditionMap["status"], "%s Ready condition should be True", resourceName)
-			return
+
+		conditions, exists, err := unstructured.NestedSlice(resource.Object, "status", "conditions")
+		if err != nil {
+			return "", fmt.Errorf("failed to get conditions for %s: %v", name, err)
 		}
-	}
-	assert.Fail(t, fmt.Sprintf("%s has no Ready condition", resourceName))
+		if !exists {
+			return "", fmt.Errorf("%s has no status conditions yet", name)
+		}
+
+		for _, condition := range conditions {
+			conditionMap, ok := condition.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			if conditionMap["type"] == "Ready" {
+				status, _ := conditionMap["status"].(string)
+				if status == "True" {
+					return "Ready", nil
+				}
+				return "", fmt.Errorf("%s Ready condition is %q, waiting for True", name, status)
+			}
+		}
+		return "", fmt.Errorf("%s has no Ready condition", name)
+	})
 }
 
 func (s *ComponentSuite) TestBasic() {
@@ -173,10 +192,8 @@ func (s *ComponentSuite) TestAutoMode() {
 	assert.NotNil(s.T(), customNodeClass, "expected to find a NodeClass named 'custom'")
 
 	if customNodeClass != nil {
-		conditions, exists, err := unstructured.NestedSlice(customNodeClass.Object, "status", "conditions")
-		assert.NoError(s.T(), err)
-		assert.True(s.T(), exists)
-		assertReadyCondition(s.T(), conditions, "NodeClass custom")
+		// Auto Mode resources may take time to reconcile after creation.
+		waitForReadyCondition(s.T(), dynamicClient, nodeClassGVR, "custom", 5*time.Minute)
 	}
 
 	nodePoolGVR := schema.GroupVersionResource{
@@ -199,10 +216,8 @@ func (s *ComponentSuite) TestAutoMode() {
 	assert.NotNil(s.T(), customNodePool, "expected to find a NodePool named 'custom'")
 
 	if customNodePool != nil {
-		conditions, exists, err := unstructured.NestedSlice(customNodePool.Object, "status", "conditions")
-		assert.NoError(s.T(), err)
-		assert.True(s.T(), exists)
-		assertReadyCondition(s.T(), conditions, "NodePool custom")
+		// Auto Mode resources may take time to reconcile after creation.
+		waitForReadyCondition(s.T(), dynamicClient, nodePoolGVR, "custom", 5*time.Minute)
 	}
 
 	s.DriftTest(component, stack, &inputs)
