@@ -87,7 +87,20 @@ resource "kubernetes_manifest" "auto_mode_node_class" {
     spec = merge(
       {
         # Required fields
-        role = module.eks.outputs.auto_mode_node_role_name
+resource "kubernetes_manifest" "auto_mode_node_class" {
+  for_each = local.auto_mode_node_pools
+
+  lifecycle {
+    precondition {
+      condition     = module.eks.outputs.auto_mode_node_role_name != null && module.eks.outputs.auto_mode_node_role_name != "deleted"
+      error_message = "EKS Auto Mode requires eks.auto_mode_node_role_name to be set to a valid IAM role name."
+    }
+  }
+
+  manifest = {
+    role = module.eks.outputs.auto_mode_node_role_name
+  }
+}
         subnetSelectorTerms = [for id in(each.value.private_subnets_enabled ? local.private_subnet_ids : local.public_subnet_ids) : {
           id = id
         }]
