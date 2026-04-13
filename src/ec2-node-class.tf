@@ -98,7 +98,7 @@ resource "kubernetes_manifest" "auto_mode_node_class" {
         }]
       },
       # Optional fields - only included when set
-      each.value.ephemeral_storage != null ? { ephemeralStorage = each.value.ephemeral_storage } : {},
+      each.value.ephemeral_storage != null ? { ephemeralStorage = { for k, v in each.value.ephemeral_storage : k => v if v != null } } : {},
       each.value.snat_policy != null ? { snatPolicy = each.value.snat_policy } : {},
       each.value.network_policy != null ? { networkPolicy = each.value.network_policy } : {},
       each.value.network_policy_event_logs != null ? { networkPolicyEventLogs = each.value.network_policy_event_logs } : {},
