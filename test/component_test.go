@@ -28,7 +28,12 @@ type ComponentSuite struct {
 // or the timeout expires. Auto Mode resources may take time to reconcile after creation.
 func waitForReadyCondition(t *testing.T, dynamicClient dynamic.Interface, gvr schema.GroupVersionResource, name string, timeout time.Duration) {
 	t.Helper()
-	retry.DoWithRetry(t, fmt.Sprintf("Waiting for %s Ready condition", name), int(timeout.Seconds()/10), 10*time.Second, func() (string, error) {
+	maxRetries := int(timeout.Seconds() / 10)
+	if maxRetries < 1 {
+		maxRetries = 1
+	}
+
+	retry.DoWithRetry(t, fmt.Sprintf("Waiting for %s Ready condition", name), maxRetries, 10*time.Second, func() (string, error) {
 		resource, err := dynamicClient.Resource(gvr).Get(context.Background(), name, metav1.GetOptions{})
 		if err != nil {
 			return "", fmt.Errorf("failed to get resource %s: %v", name, err)

@@ -176,7 +176,7 @@ variable "node_pools" {
     # Selectors for the AMI used by Karpenter provisioner when provisioning nodes.
     # Usually use { alias = "<family>@latest" } but version can be pinned instead of "latest".
     # Based on the ami_selector_terms, Karpenter will automatically query for the appropriate EKS optimized AMI via AWS Systems Manager (SSM)
-    ami_selector_terms = optional(list(any))
+    ami_selector_terms = optional(list(any), [])
     # Karpenter nodes block device mappings. Controls the Elastic Block Storage volumes that Karpenter attaches to provisioned nodes.
     # Karpenter uses default block device mappings for the AMI Family specified.
     # For example, the Bottlerocket AMI Family defaults with two block device mappings,
@@ -213,7 +213,7 @@ variable "node_pools" {
     ###########################################################################
     # Auto Mode NodeClass fields (eks.amazonaws.com/v1)
     # https://docs.aws.amazon.com/eks/latest/userguide/create-node-class.html
-    # These fields are only used when eks_auto_mode_enabled = true.
+    # These fields are only used when auto_mode_enabled = true.
     # They are ignored for self-managed Karpenter (karpenter.k8s.aws/v1).
     ###########################################################################
 

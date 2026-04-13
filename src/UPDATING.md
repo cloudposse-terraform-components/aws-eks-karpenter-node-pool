@@ -13,7 +13,7 @@ required.
 
 ### 1. Upgrade the upstream `eks/cluster` component
 
-Starting from (`v1.541.0`)[https://github.com/cloudposse-terraform-components/aws-eks-cluster/releases/tag/v1.541.0] the `eks/cluster` component
+Starting from [`v1.541.0`](https://github.com/cloudposse-terraform-components/aws-eks-cluster/releases/tag/v1.541.0) the `eks/cluster` component
 must expose two new remote-state outputs consumed here:
 
 - `auto_mode_enabled` (`bool`)
