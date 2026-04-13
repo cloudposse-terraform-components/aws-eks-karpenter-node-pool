@@ -93,8 +93,9 @@ func (s *ComponentSuite) TestBasic() {
 	assert.NotNil(s.T(), config)
 
 	dynamicClient, err := dynamic.NewForConfig(config)
+	assert.NoError(s.T(), err)
 	if err != nil {
-		panic(fmt.Errorf("failed to create dynamic client: %v", err))
+		return
 	}
 
 	// Define the GroupVersionResource for the EC2NodeClass CRD
@@ -170,8 +171,9 @@ func (s *ComponentSuite) TestAutoMode() {
 	assert.NotNil(s.T(), config)
 
 	dynamicClient, err := dynamic.NewForConfig(config)
+	assert.NoError(s.T(), err)
 	if err != nil {
-		panic(fmt.Errorf("failed to create dynamic client: %v", err))
+		return
 	}
 
 	// Auto Mode uses the eks.amazonaws.com NodeClass CRD instead of
