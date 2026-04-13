@@ -103,3 +103,10 @@ check "auto_mode_node_pool_name_conflict" {
     error_message = "Custom NodePool names cannot conflict with Auto Mode built-in pools: 'general-purpose' and 'system'."
   }
 }
+
+check "auto_mode_node_role_name" {
+  assert {
+    condition     = !local.enabled || !module.eks.outputs.auto_mode_enabled || (module.eks.outputs.auto_mode_node_role_name != null && module.eks.outputs.auto_mode_node_role_name != "deleted")
+    error_message = "EKS Auto Mode requires eks.auto_mode_node_role_name to be set. Ensure the eks/cluster component outputs auto_mode_node_role_name and is at v1.541.0+."
+  }
+}
