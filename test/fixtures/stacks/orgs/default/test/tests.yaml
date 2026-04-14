@@ -2,6 +2,8 @@ import:
   - orgs/default/test/_defaults
   - catalog/vpc
   - catalog/eks-cluster
+  - catalog/eks-cluster-auto-mode
   - catalog/eks-karpenter-controller
   - catalog/usecase/basic
+  - catalog/usecase/auto-mode
   - catalog/usecase/disabled

@@ -4,7 +4,7 @@ locals {
 
 module "eks" {
   source  = "cloudposse/stack-config/yaml//modules/remote-state"
-  version = "1.8.0"
+  version = "2.0.0"
 
   bypass    = !local.account_map_enabled
   component = var.eks_component_name
@@ -17,6 +17,8 @@ module "eks" {
     eks_cluster_identity_oidc_issuer       = coalesce(var.eks.eks_cluster_identity_oidc_issuer, "deleted")
     karpenter_iam_role_name                = var.eks.karpenter_iam_role_name
     karpenter_node_role_arn                = coalesce(var.eks.karpenter_node_role_arn, "deleted")
+    auto_mode_node_role_name               = coalesce(var.eks.auto_mode_node_role_name, "deleted")
+    auto_mode_enabled                      = coalesce(var.eks.auto_mode_enabled, false)
   }
 
   context = module.this.context
@@ -24,7 +26,7 @@ module "eks" {
 
 module "vpc" {
   source  = "cloudposse/stack-config/yaml//modules/remote-state"
-  version = "1.8.0"
+  version = "2.0.0"
 
   bypass    = !local.account_map_enabled
   component = var.vpc_component_name

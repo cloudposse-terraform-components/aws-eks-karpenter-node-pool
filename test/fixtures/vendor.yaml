@@ -6,8 +6,8 @@ metadata:
 spec:
   sources:
     - component: "account-map"
-      source: github.com/cloudposse/terraform-aws-components.git//modules/account-map?ref={{.Version}}
-      version: 1.520.0
+      source: github.com/cloudposse-terraform-components/aws-account-map.git//src?ref={{.Version}}
+      version: v1.537.2
       targets:
         - "components/terraform/account-map"
       included_paths:
@@ -19,7 +19,7 @@ spec:
 
     - component: "eks/karpenter-controller"
       source: github.com/cloudposse-terraform-components/aws-eks-karpenter-controller.git//src?ref={{.Version}}
-      version: v1.536.2
+      version: v1.538.2
       targets:
         - "components/terraform/eks/karpenter-controller"
       included_paths:
@@ -31,7 +31,8 @@ spec:
 
     - component: "eks/cluster"
       source: github.com/cloudposse-terraform-components/aws-eks-cluster.git//src?ref={{.Version}}
-      version: v1.538.0
+      version: v1.541.1
+
       targets:
         - "components/terraform/eks/cluster"
       included_paths:
@@ -43,7 +44,7 @@ spec:
 
     - component: "vpc"
       source: github.com/cloudposse-terraform-components/aws-vpc.git//src?ref={{.Version}}
-      version: v1.538.1
+      version: v2.1.2
       targets:
         - "components/terraform/vpc"
       included_paths:
