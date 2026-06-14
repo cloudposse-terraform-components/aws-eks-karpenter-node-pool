@@ -62,6 +62,9 @@ resource "kubernetes_manifest" "ec2_node_class" {
       },
       each.value.ami_family == null ? {} : {
         amiFamily = each.value.ami_family
+      },
+      each.value.instance_store_policy == null ? {} : {
+        instanceStorePolicy = each.value.instance_store_policy
     })
   }
 }

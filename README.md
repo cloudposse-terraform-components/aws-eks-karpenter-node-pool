@@ -46,7 +46,6 @@ Not supported:
     cluster.
   - `amiSelectorTerms`. Such terms override the `amiFamily` setting, which is the only AMI selection supported by this
     component.
-  - `instanceStorePolicy`
   - `associatePublicIPAddress`
 
 
