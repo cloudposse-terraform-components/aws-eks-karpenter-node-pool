@@ -222,6 +222,16 @@ components:
                   volumeType: gp3
                   encrypted: true
                   deleteOnTermination: true
+            # Optionally place the kubelet and containerd (and therefore pod
+            # ephemeral-storage: image layers, emptyDir, scratch) on the
+            # instance's local NVMe via RAID0, instead of the EBS root volume.
+            # Useful for ephemeral, IO-heavy workloads (e.g. CI runners) that
+            # otherwise saturate the gp3 root volume's throughput. Requires
+            # instance types that have local NVMe (the *d / *gd families; select
+            # them with a `karpenter.k8s.aws/instance-local-nvme` requirement).
+            # Omit to ignore instance-store volumes. Only valid value: "RAID0".
+            # https://karpenter.sh/docs/concepts/nodeclasses/#specinstancestorepolicy
+            # instance_store_policy: "RAID0"
             # Set acceptable (In) and unacceptable (Out) Kubernetes and Karpenter values for node provisioning based on
             # Well-Known Labels and cloud-specific settings. These can include instance types, zones, computer architecture,
             # and capacity type (such as AWS spot or on-demand).
