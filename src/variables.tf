@@ -262,4 +262,12 @@ variable "node_pools" {
   }))
   description = "Configuration for node pools. See code for details."
   nullable    = false
+
+  validation {
+    condition = alltrue([
+      for _, np in var.node_pools :
+      np.instance_store_policy == null || np.instance_store_policy == "RAID0"
+    ])
+    error_message = "Each node_pools[*].instance_store_policy must be null or \"RAID0\" (the only value supported by the EC2NodeClass)."
+  }
 }
