@@ -173,6 +173,12 @@ variable "node_pools" {
     # ami_family dictates the default bootstrapping logic.
     # It is only required if you do not specify amiSelectorTerms.alias
     ami_family = optional(string, null)
+    # instanceStorePolicy controls how local NVMe instance-store volumes are used.
+    # Set to "RAID0" to format and mount them as the underlying filesystem for the
+    # kubelet and containerd (node allocatable ephemeral-storage then becomes the
+    # total instance-store size). Leave null to ignore instance-store volumes.
+    # https://karpenter.sh/docs/concepts/nodeclasses/#specinstancestorepolicy
+    instance_store_policy = optional(string, null)
     # Selectors for the AMI used by Karpenter provisioner when provisioning nodes.
     # Usually use { alias = "<family>@latest" } but version can be pinned instead of "latest".
     # Based on the ami_selector_terms, Karpenter will automatically query for the appropriate EKS optimized AMI via AWS Systems Manager (SSM)
@@ -256,4 +262,12 @@ variable "node_pools" {
   }))
   description = "Configuration for node pools. See code for details."
   nullable    = false
+
+  validation {
+    condition = alltrue([
+      for _, np in var.node_pools :
+      np.instance_store_policy == null || np.instance_store_policy == "RAID0"
+    ])
+    error_message = "Each node_pools[*].instance_store_policy must be null or \"RAID0\" (the only value supported by the EC2NodeClass)."
+  }
 }

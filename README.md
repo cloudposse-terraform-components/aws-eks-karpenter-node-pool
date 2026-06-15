@@ -46,7 +46,6 @@ Not supported:
     cluster.
   - `amiSelectorTerms`. Such terms override the `amiFamily` setting, which is the only AMI selection supported by this
     component.
-  - `instanceStorePolicy`
   - `associatePublicIPAddress`
 
 
@@ -266,6 +265,36 @@ components:
                 values:
                   - "amd64"
 ```
+
+## Using local NVMe instance storage
+
+IO-heavy, ephemeral workloads — self-hosted CI runners are the classic case —
+can saturate the throughput of the EBS root volume. To move the kubelet and
+containerd (and therefore pod ephemeral-storage: image layers, `emptyDir`,
+build scratch) onto the instance's local NVMe instead, set
+`instance_store_policy: "RAID0"` on the node pool and require NVMe-capable
+instance types:
+
+```yaml
+node_pools:
+  ci-runners:
+    # ... disruption, limits, ami_selector_terms, block_device_mappings ...
+    instance_store_policy: "RAID0"
+    requirements:
+      # only instance types that actually have local NVMe
+      - key: "karpenter.k8s.aws/instance-local-nvme"
+        operator: Gt
+        values: ["0"]
+      # general-purpose / compute / memory (exclude storage-i, GPU, etc.)
+      - key: "karpenter.k8s.aws/instance-category"
+        operator: In
+        values: ["c", "m", "r"]
+```
+
+The local NVMe is **ephemeral** (wiped on stop/termination), so this suits
+scratch/cache workloads, not anything needing persistence. On AL2 / AL2023 /
+Bottlerocket the RAID0 array is configured automatically, and the node's
+allocatable `ephemeral-storage` becomes the total instance-store size.
 
 > [!IMPORTANT]
 > In Cloud Posse's examples, we avoid pinning modules to specific versions to prevent discrepancies between the documentation
