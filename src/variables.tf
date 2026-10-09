@@ -179,6 +179,16 @@ variable "node_pools" {
     # total instance-store size). Leave null to ignore instance-store volumes.
     # https://karpenter.sh/docs/concepts/nodeclasses/#specinstancestorepolicy
     instance_store_policy = optional(string, null)
+    # cpuOptions configures instance CPU features at launch. Currently only
+    # nested_virtualization is supported: "enabled" or "disabled" (validated
+    # below). Set it to "enabled" to launch instances with nested
+    # virtualization turned on. When enabled, Karpenter filters to instance
+    # types reporting "nested-virtualization" in
+    # ProcessorInfo.SupportedFeatures. Requires Karpenter >= v1.13.0.
+    # https://karpenter.sh/docs/concepts/nodeclasses/#speccpuoptions
+    cpu_options = optional(object({
+      nested_virtualization = optional(string)
+    }), null)
     # Selectors for the AMI used by Karpenter provisioner when provisioning nodes.
     # Usually use { alias = "<family>@latest" } but version can be pinned instead of "latest".
     # Based on the ami_selector_terms, Karpenter will automatically query for the appropriate EKS optimized AMI via AWS Systems Manager (SSM)
@@ -269,5 +279,14 @@ variable "node_pools" {
       np.instance_store_policy == null || np.instance_store_policy == "RAID0"
     ])
     error_message = "Each node_pools[*].instance_store_policy must be null or \"RAID0\" (the only value supported by the EC2NodeClass)."
+  }
+
+  validation {
+    condition = alltrue([
+      for _, np in var.node_pools :
+      np.cpu_options == null || np.cpu_options.nested_virtualization == null ||
+      contains(["enabled", "disabled"], np.cpu_options.nested_virtualization)
+    ])
+    error_message = "Each node_pools[*].cpu_options.nested_virtualization must be null, \"enabled\", or \"disabled\"."
   }
 }
