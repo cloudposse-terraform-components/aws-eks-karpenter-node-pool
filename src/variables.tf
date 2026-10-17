@@ -185,6 +185,7 @@ variable "node_pools" {
     # virtualization turned on. When enabled, Karpenter filters to instance
     # types reporting "nested-virtualization" in
     # ProcessorInfo.SupportedFeatures. Requires Karpenter >= v1.13.0.
+    # Auto Mode node classes ignore cpu_options.
     # https://karpenter.sh/docs/concepts/nodeclasses/#speccpuoptions
     cpu_options = optional(object({
       nested_virtualization = optional(string)

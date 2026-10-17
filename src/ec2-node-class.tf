@@ -66,12 +66,11 @@ resource "kubernetes_manifest" "ec2_node_class" {
       each.value.instance_store_policy == null ? {} : {
         instanceStorePolicy = each.value.instance_store_policy
       },
-      # Strip null subfields so a cpu_options object with only some fields set
-      # does not leave nulls in the manifest and cause a perpetual plan diff.
-      each.value.cpu_options == null ? {} : {
-        cpuOptions = { for k, v in {
+      # Omit cpuOptions when nested virtualization is unset, including cpu_options = {}.
+      try(each.value.cpu_options.nested_virtualization, null) == null ? {} : {
+        cpuOptions = {
           nestedVirtualization = each.value.cpu_options.nested_virtualization
-        } : k => v if v != null }
+        }
     })
   }
 }
