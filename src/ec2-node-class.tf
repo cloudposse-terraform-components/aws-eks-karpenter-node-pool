@@ -65,6 +65,12 @@ resource "kubernetes_manifest" "ec2_node_class" {
       },
       each.value.instance_store_policy == null ? {} : {
         instanceStorePolicy = each.value.instance_store_policy
+      },
+      # Omit cpuOptions when nested virtualization is unset, including cpu_options = {}.
+      try(each.value.cpu_options.nested_virtualization, null) == null ? {} : {
+        cpuOptions = {
+          nestedVirtualization = each.value.cpu_options.nested_virtualization
+        }
     })
   }
 }
